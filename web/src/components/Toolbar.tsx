@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useBoardStore } from "../store";
 import type { TokenKind } from "../types";
+import { emitAddToken, emitRemoveToken, emitUpdateToken } from "../multiplayer";
 
 const KIND_LABEL: Record<TokenKind, string> = {
   character: "Personagem",
@@ -40,15 +41,17 @@ export default function Toolbar() {
     reader.onload = () => {
       const dataUrl = reader.result as string;
       const kind = pendingKindRef.current;
-      addToken({
+      const token = {
         id: crypto.randomUUID(),
         name: file.name.replace(/\.[^.]+$/, ""),
         kind,
         imageUrl: dataUrl,
-        position: [0, 0.75, 0],
+        position: [0, 0.75, 0] as [number, number, number],
         scale: 1.5,
         rotationY: 0,
-      });
+      };
+      addToken(token);
+      emitAddToken(token);
     };
     reader.readAsDataURL(file);
   }
@@ -110,12 +113,20 @@ export default function Toolbar() {
                 max={5}
                 step={0.1}
                 value={selectedToken.scale}
-                onChange={(e) =>
-                  updateToken(selectedToken.id, { scale: parseFloat(e.target.value) })
-                }
+                onChange={(e) => {
+                  const scale = parseFloat(e.target.value);
+                  updateToken(selectedToken.id, { scale });
+                  emitUpdateToken(selectedToken.id, { scale });
+                }}
               />
             </label>
-            <button style={styles.btnDanger} onClick={() => removeToken(selectedToken.id)}>
+            <button
+              style={styles.btnDanger}
+              onClick={() => {
+                removeToken(selectedToken.id);
+                emitRemoveToken(selectedToken.id);
+              }}
+            >
               Remover
             </button>
           </div>

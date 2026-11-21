@@ -4,6 +4,7 @@ import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { TokenData } from "../types";
 import { useBoardStore } from "../store";
+import { emitUpdateToken } from "../multiplayer";
 
 interface TokenProps {
   token: TokenData;
@@ -38,6 +39,8 @@ function TokenBody({
   const { raycaster } = useThree();
   const [dragging, setDragging] = useState(false);
   const groupRef = useRef<THREE.Group>(null);
+  const lastEmitRef = useRef(0);
+  const lastPositionRef = useRef<[number, number, number]>(token.position);
   const { updateTokenPosition, selectToken, selectedTokenId, gridSize, cellSize } =
     useBoardStore();
 
@@ -53,6 +56,8 @@ function TokenBody({
 
   function onPointerUp() {
     setDragging(false);
+    // Garante que a posição final seja sincronizada mesmo se o throttle pulou o último frame
+    emitUpdateToken(token.id, { position: lastPositionRef.current });
   }
 
   function onPointerMove(e: any) {
@@ -70,6 +75,14 @@ function TokenBody({
     const z = THREE.MathUtils.clamp(target.z, -half, half);
 
     updateTokenPosition(token.id, [x, floorY, z]);
+    lastPositionRef.current = [x, floorY, z];
+
+    // Throttle: evita inundar o servidor com um evento por pixel movido
+    const now = performance.now();
+    if (now - lastEmitRef.current > 50) {
+      lastEmitRef.current = now;
+      emitUpdateToken(token.id, { position: [x, floorY, z] });
+    }
   }
 
   return (

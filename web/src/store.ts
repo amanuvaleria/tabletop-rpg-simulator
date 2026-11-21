@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import type { CameraMode, TokenData } from "./types";
 
+export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
+
 interface BoardState {
   tokens: TokenData[];
   selectedTokenId: string | null;
@@ -8,12 +10,28 @@ interface BoardState {
   gridSize: number; // número de células por lado
   cellSize: number; // tamanho de cada célula em unidades 3D
 
+  // Multiplayer
+  roomId: string | null;
+  playerName: string;
+  connectionStatus: ConnectionStatus;
+  roomUsers: string[];
+  connectionError: string | null;
+
   addToken: (token: TokenData) => void;
   updateTokenPosition: (id: string, position: [number, number, number]) => void;
   updateToken: (id: string, patch: Partial<TokenData>) => void;
   removeToken: (id: string) => void;
   selectToken: (id: string | null) => void;
   setCameraMode: (mode: CameraMode) => void;
+
+  setTokens: (tokens: TokenData[]) => void;
+  setRoomInfo: (info: Partial<{
+    roomId: string | null;
+    playerName: string;
+    connectionStatus: ConnectionStatus;
+    roomUsers: string[];
+    connectionError: string | null;
+  }>) => void;
 }
 
 export const useBoardStore = create<BoardState>((set) => ({
@@ -22,6 +40,12 @@ export const useBoardStore = create<BoardState>((set) => ({
   cameraMode: "3d",
   gridSize: 20,
   cellSize: 1,
+
+  roomId: null,
+  playerName: "",
+  connectionStatus: "disconnected",
+  roomUsers: [],
+  connectionError: null,
 
   addToken: (token) =>
     set((state) => ({ tokens: [...state.tokens, token] })),
@@ -45,4 +69,8 @@ export const useBoardStore = create<BoardState>((set) => ({
   selectToken: (id) => set({ selectedTokenId: id }),
 
   setCameraMode: (mode) => set({ cameraMode: mode }),
+
+  setTokens: (tokens) => set({ tokens }),
+
+  setRoomInfo: (info) => set((state) => ({ ...state, ...info })),
 }));
