@@ -26,7 +26,8 @@ Criar uma plataforma web onde mestres e jogadores possam:
   - Tokens (personagens/NPCs/objetos) são PNGs em billboard, sempre de frente pra câmera
 - **Estado do board:** Zustand
 - **Realtime/Multiplayer:** Socket.IO (WebSocket) — salas com código compartilhável
-- **Backend:** Node.js + Express + Socket.IO (`server/`), estado em memória por sala
+- **Backend:** Node.js + Express + Socket.IO (`server/`), estado persistido em
+  disco por sala (`server/data/rooms/<CODIGO>.json`)
 
 ## Status
 
@@ -54,9 +55,12 @@ Criar uma plataforma web onde mestres e jogadores possam:
       props, piso); cada jogador só arrasta/edita/remove os tokens que ele mesmo
       criou — tokens de outros ficam travados (🔒) com indicação de quem controla;
       Mestre pode tudo. Validado na prática enforçado pelo servidor, não só na UI.
+- [x] **Persistência de sala**: tokens, cenário e histórico de dados são salvos em
+      disco (JSON por sala, debounce de 1.5s) e recarregados automaticamente —
+      derrubar/reiniciar o servidor não perde a campanha. Flush imediato ao sala
+      ficar vazia e ao encerrar o processo (SIGINT/SIGTERM).
 
 **Próximos passos:**
-- [ ] Persistência de sala (hoje o estado é só em memória no servidor)
 - [ ] Biblioteca de assets / upload persistente (não só localStorage)
 - [ ] Deploy do servidor multiplayer (pra jogar fora da rede local)
 - [ ] Mais temas visuais (moderno paranormal, terror, aventura — hoje o foco é medieval)

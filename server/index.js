@@ -16,6 +16,86 @@ const fs = require("fs");
 
 const PORT = process.env.PORT || 4000;
 
+// ---- Persistência: cada sala vira um arquivo JSON em disco. Sobrevive a
+// reinícios do servidor; só o que é efêmero (quem está online, quem é o
+// Mestre nesta sessão) não é salvo e é recalculado quando alguém reentra.
+const DATA_DIR = path.join(__dirname, "data", "rooms");
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+function safeFileName(roomId) {
+  return roomId.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 64) || "room";
+}
+function roomFilePath(roomId) {
+  return path.join(DATA_DIR, `${safeFileName(roomId)}.json`);
+}
+
+function loadRoomFromDisk(roomId) {
+  try {
+    const raw = fs.readFileSync(roomFilePath(roomId), "utf8");
+    const data = JSON.parse(raw);
+    return {
+      tokens: new Map((data.tokens || []).map((t) => [t.id, t])),
+      props: new Map((data.props || []).map((p) => [p.id, p])),
+      floor: data.floor || "dark",
+      rolls: Array.isArray(data.rolls) ? data.rolls.slice(-50) : [],
+      gridSize: data.gridSize || 20,
+      cellSize: data.cellSize || 1,
+    };
+  } catch {
+    return null;
+  }
+}
+
+const saveTimers = new Map(); // roomId -> timeout, pra não escrever em disco a cada pixel arrastado
+
+function persistRoomToDisk(roomId, room) {
+  const data = {
+    tokens: Array.from(room.tokens.values()),
+    props: Array.from(room.props.values()),
+    floor: room.floor,
+    rolls: room.rolls.slice(-50),
+    gridSize: room.gridSize,
+    cellSize: room.cellSize,
+    savedAt: Date.now(),
+  };
+  fs.writeFile(roomFilePath(roomId), JSON.stringify(data), (err) => {
+    if (err) console.error("[tabletop-server] falha ao salvar sala", roomId, err.message);
+  });
+}
+
+function persistRoomToDiskSync(roomId, room) {
+  const data = {
+    tokens: Array.from(room.tokens.values()),
+    props: Array.from(room.props.values()),
+    floor: room.floor,
+    rolls: room.rolls.slice(-50),
+    gridSize: room.gridSize,
+    cellSize: room.cellSize,
+    savedAt: Date.now(),
+  };
+  try {
+    fs.writeFileSync(roomFilePath(roomId), JSON.stringify(data));
+  } catch (err) {
+    console.error("[tabletop-server] falha ao salvar sala (sync)", roomId, err.message);
+  }
+}
+
+/** Agenda a gravação em disco (debounce de 1.5s por sala). */
+function scheduleSave(roomId, room) {
+  clearTimeout(saveTimers.get(roomId));
+  saveTimers.set(
+    roomId,
+    setTimeout(() => persistRoomToDisk(roomId, room), 1500)
+  );
+}
+
+/** Grava imediatamente e cancela qualquer gravação pendente (usado ao esvaziar a sala). */
+function flushSave(roomId, room) {
+  clearTimeout(saveTimers.get(roomId));
+  saveTimers.delete(roomId);
+  persistRoomToDisk(roomId, room);
+}
+
 const app = express();
 app.use(cors());
 app.get("/health", (_req, res) => res.json({ ok: true }));
@@ -44,16 +124,18 @@ const DICE_SIDES = [4, 6, 8, 10, 12, 20, 100];
 
 function getRoom(roomId) {
   if (!rooms.has(roomId)) {
+    const fromDisk = loadRoomFromDisk(roomId);
     rooms.set(roomId, {
-      tokens: new Map(),
-      gridSize: 20,
-      cellSize: 1,
+      tokens: fromDisk?.tokens || new Map(),
+      gridSize: fromDisk?.gridSize || 20,
+      cellSize: fromDisk?.cellSize || 1,
       users: new Map(),
-      rolls: [],
-      props: new Map(),
-      floor: "dark",
-      gmSocketId: null, // primeiro a entrar na sala vira o Mestre
+      rolls: fromDisk?.rolls || [],
+      props: fromDisk?.props || new Map(),
+      floor: fromDisk?.floor || "dark",
+      gmSocketId: null, // primeiro a entrar na sala (ou reentrar após reinício) vira o Mestre
     });
+    if (fromDisk) console.log(`[tabletop-server] sala ${roomId} recarregada do disco`);
   }
   return rooms.get(roomId);
 }
@@ -115,6 +197,7 @@ io.on("connection", (socket) => {
     const withOwner = { ...token, ownerId: socket.id, ownerName: userName };
     room.tokens.set(token.id, withOwner);
     socket.to(currentRoomId).emit("token:added", withOwner);
+    scheduleSave(currentRoomId, room);
   });
 
   socket.on("token:update", ({ id, patch }) => {
@@ -127,6 +210,7 @@ io.on("connection", (socket) => {
     const updated = { ...existing, ...safePatch };
     room.tokens.set(id, updated);
     socket.to(currentRoomId).emit("token:updated", { id, patch: safePatch });
+    scheduleSave(currentRoomId, room);
   });
 
   socket.on("token:remove", (id) => {
@@ -136,6 +220,7 @@ io.on("connection", (socket) => {
     if (!existing || !canControlToken(room, socket.id, existing)) return;
     room.tokens.delete(id);
     socket.to(currentRoomId).emit("token:removed", id);
+    scheduleSave(currentRoomId, room);
   });
 
   // ---- Props de cenario (casas, arvores, postes...) e piso
@@ -162,6 +247,7 @@ io.on("connection", (socket) => {
     if (!clean || room.props.size >= 500) return;
     room.props.set(clean.id, clean);
     socket.to(currentRoomId).emit("prop:added", clean);
+    scheduleSave(currentRoomId, room);
   });
 
   socket.on("prop:update", ({ id, patch } = {}) => {
@@ -177,6 +263,7 @@ io.on("connection", (socket) => {
       id,
       patch: { position: clean.position, rotationY: clean.rotationY, scale: clean.scale, on: clean.on },
     });
+    scheduleSave(currentRoomId, room);
   });
 
   socket.on("prop:remove", (id) => {
@@ -185,6 +272,7 @@ io.on("connection", (socket) => {
     if (roleOf(room, socket.id) !== "gm") return;
     room.props.delete(id);
     socket.to(currentRoomId).emit("prop:removed", id);
+    scheduleSave(currentRoomId, room);
   });
 
   // Carrega um mapa pronto (substitui os props e troca o piso) para toda a sala.
@@ -202,6 +290,7 @@ io.on("connection", (socket) => {
       floor: room.floor,
       props: Array.from(room.props.values()),
     });
+    scheduleSave(currentRoomId, room);
   });
 
   // Rolagem de dados: o servidor sorteia (fonte da verdade), ninguém forja resultado.
@@ -226,6 +315,7 @@ io.on("connection", (socket) => {
     room.rolls.push(roll);
     if (room.rolls.length > 50) room.rolls.shift();
     io.to(currentRoomId).emit("dice:rolled", roll);
+    scheduleSave(currentRoomId, room);
   });
 
   socket.on("disconnect", () => {
@@ -245,7 +335,11 @@ io.on("connection", (socket) => {
 
     socket.to(currentRoomId).emit("user:left", { name: userName });
     io.to(currentRoomId).emit("room:users", roomSnapshot(room).users);
-    if (room.users.size === 0 && room.tokens.size === 0 && room.props.size === 0) {
+
+    if (room.users.size === 0) {
+      // Ninguém mais na sala: garante que o estado está salvo e libera a
+      // memória — ao reentrar, getRoom() recarrega tudo do disco de novo.
+      flushSave(currentRoomId, room);
       rooms.delete(currentRoomId);
     }
   });
@@ -254,3 +348,14 @@ io.on("connection", (socket) => {
 server.listen(PORT, () => {
   console.log(`[tabletop-server] listening on port ${PORT}`);
 });
+
+function shutdown() {
+  console.log("[tabletop-server] encerrando, salvando salas ativas...");
+  for (const [roomId, room] of rooms.entries()) {
+    clearTimeout(saveTimers.get(roomId));
+    persistRoomToDiskSync(roomId, room);
+  }
+  process.exit(0);
+}
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
