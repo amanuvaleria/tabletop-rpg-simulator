@@ -11,6 +11,7 @@ import "./App.css";
 export default function App() {
   const connectionStatus = useBoardStore((s) => s.connectionStatus);
   const roomId = useBoardStore((s) => s.roomId);
+  const role = useBoardStore((s) => s.role);
 
   if (!roomId) {
     return <RoomGate />;
@@ -21,7 +22,7 @@ export default function App() {
       <Toolbar />
       <RoomBadge />
       <DicePanel />
-      <PropPalette />
+      {role === "gm" && <PropPalette />}
       <CharacterSheetPanel />
       {connectionStatus !== "connected" && (
         <div

@@ -1,7 +1,12 @@
 import { create } from "zustand";
-import type { CameraMode, DiceRoll, FloorKind, Mood, PropData, TokenData } from "./types";
+import type { CameraMode, DiceRoll, FloorKind, Mood, PlayerRole, PropData, TokenData } from "./types";
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
+
+export interface RoomUser {
+  name: string;
+  role: PlayerRole;
+}
 
 interface BoardState {
   tokens: TokenData[];
@@ -35,8 +40,10 @@ interface BoardState {
   roomId: string | null;
   playerName: string;
   connectionStatus: ConnectionStatus;
-  roomUsers: string[];
+  roomUsers: RoomUser[];
   connectionError: string | null;
+  role: PlayerRole | null; // meu papel nesta sala
+  mySocketId: string | null;
 
   addToken: (token: TokenData) => void;
   updateTokenPosition: (id: string, position: [number, number, number]) => void;
@@ -55,12 +62,18 @@ interface BoardState {
     roomId: string | null;
     playerName: string;
     connectionStatus: ConnectionStatus;
-    roomUsers: string[];
+    roomUsers: RoomUser[];
     connectionError: string | null;
+    role: PlayerRole | null;
+    mySocketId: string | null;
   }>) => void;
+
+  /** GM pode tudo; jogador só controla o que ele mesmo criou (ownerId). Tokens sem
+   * ownerId (de antes dessa feature) seguem livres pra qualquer um, por compatibilidade. */
+  canControlToken: (token: TokenData) => boolean;
 }
 
-export const useBoardStore = create<BoardState>((set) => ({
+export const useBoardStore = create<BoardState>((set, get) => ({
   tokens: [],
   selectedTokenId: null,
   cameraMode: "3d",
@@ -106,6 +119,8 @@ export const useBoardStore = create<BoardState>((set) => ({
   connectionStatus: "disconnected",
   roomUsers: [],
   connectionError: null,
+  role: null,
+  mySocketId: null,
 
   addToken: (token) =>
     set((state) => ({ tokens: [...state.tokens, token] })),
@@ -137,4 +152,11 @@ export const useBoardStore = create<BoardState>((set) => ({
   setTokens: (tokens) => set({ tokens }),
 
   setRoomInfo: (info) => set((state) => ({ ...state, ...info })),
+
+  canControlToken: (token) => {
+    const { role, mySocketId } = get();
+    if (role === "gm") return true;
+    if (!token.ownerId) return true; // tokens antigos sem dono: livres
+    return token.ownerId === mySocketId;
+  },
 }));

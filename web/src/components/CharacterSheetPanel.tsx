@@ -26,10 +26,12 @@ export default function CharacterSheetPanel() {
   const token = useBoardStore((s) => s.tokens.find((t) => t.id === sheetOpenTokenId));
   const updateToken = useBoardStore((s) => s.updateToken);
   const closeSheet = useBoardStore((s) => s.closeSheet);
+  const canControlToken = useBoardStore((s) => s.canControlToken);
   const [hpDelta, setHpDelta] = useState("");
 
   if (!token || !token.sheet) return null;
   const sheet = token.sheet;
+  const locked = !canControlToken(token);
 
   function patchSheet(patch: Partial<CharacterSheet>) {
     if (!token || !token.sheet) return;
@@ -58,6 +60,7 @@ export default function CharacterSheetPanel() {
             <input
               style={styles.nameInput}
               value={token.name}
+              disabled={locked}
               onChange={(e) => {
                 updateToken(token.id, { name: e.target.value });
                 emitUpdateToken(token.id, { name: e.target.value });
@@ -65,6 +68,7 @@ export default function CharacterSheetPanel() {
             />
             <div style={styles.kindLabel}>
               {token.kind === "character" ? "Personagem" : "NPC"}
+              {locked && token.ownerName && ` · controlado por ${token.ownerName}`}
             </div>
           </div>
           <button style={styles.closeBtn} onClick={closeSheet}>
@@ -88,12 +92,13 @@ export default function CharacterSheetPanel() {
               type="number"
               placeholder="qtd"
               value={hpDelta}
+              disabled={locked}
               onChange={(e) => setHpDelta(e.target.value)}
             />
-            <button style={styles.btnDanger} onClick={() => applyHpDelta(-1)}>
+            <button style={styles.btnDanger} disabled={locked} onClick={() => applyHpDelta(-1)}>
               − Dano
             </button>
-            <button style={styles.btnHeal} onClick={() => applyHpDelta(1)}>
+            <button style={styles.btnHeal} disabled={locked} onClick={() => applyHpDelta(1)}>
               + Cura
             </button>
           </div>
@@ -104,6 +109,7 @@ export default function CharacterSheetPanel() {
                 style={styles.smallInput}
                 type="number"
                 value={sheet.maxHp}
+                disabled={locked}
                 onChange={(e) => {
                   const maxHp = Math.max(1, parseInt(e.target.value, 10) || 1);
                   patchSheet({ maxHp, hp: Math.min(sheet.hp, maxHp) });
@@ -116,6 +122,7 @@ export default function CharacterSheetPanel() {
                 style={styles.smallInput}
                 type="number"
                 value={sheet.ac}
+                disabled={locked}
                 onChange={(e) => patchSheet({ ac: parseInt(e.target.value, 10) || 0 })}
               />
             </label>
@@ -133,6 +140,7 @@ export default function CharacterSheetPanel() {
                     style={styles.attrInput}
                     type="number"
                     value={sheet.attributes[key]}
+                    disabled={locked}
                     onChange={(e) =>
                       patchSheet({
                         attributes: {
@@ -155,6 +163,7 @@ export default function CharacterSheetPanel() {
             style={styles.textarea}
             value={sheet.notes}
             placeholder="Inventário, habilidades, história..."
+            disabled={locked}
             onChange={(e) => patchSheet({ notes: e.target.value })}
           />
         </div>

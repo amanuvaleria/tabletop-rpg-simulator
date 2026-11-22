@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useBoardStore } from "../store";
 import type { TokenKind } from "../types";
 import { defaultSheet } from "../types";
-import { emitAddToken, emitRemoveToken, emitUpdateToken } from "../multiplayer";
+import { emitAddToken, emitRemoveToken, emitUpdateToken, socket } from "../multiplayer";
 
 /** Reduz a imagem (max 512px, WebP com transparencia) para o token ficar leve na rede. */
 async function shrinkImage(file: File, max = 512): Promise<string> {
@@ -43,6 +43,8 @@ export default function Toolbar() {
   const updateToken = useBoardStore((s) => s.updateToken);
   const removeToken = useBoardStore((s) => s.removeToken);
   const openSheet = useBoardStore((s) => s.openSheet);
+  const canControlToken = useBoardStore((s) => s.canControlToken);
+  const playerName = useBoardStore((s) => s.playerName);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingKindRef = useRef<TokenKind>("character");
@@ -69,6 +71,8 @@ export default function Toolbar() {
         position: [0, 0.75, 0] as [number, number, number],
         scale: 1.5,
         rotationY: 0,
+        ownerId: socket.id,
+        ownerName: playerName,
         ...(kind !== "object" ? { sheet: defaultSheet() } : {}),
       };
       addToken(token);
@@ -124,6 +128,9 @@ export default function Toolbar() {
           <strong style={styles.groupLabel}>
             Selecionado: {selectedToken.name} ({KIND_LABEL[selectedToken.kind]})
           </strong>
+          {!canControlToken(selectedToken) && selectedToken.ownerName && (
+            <span style={styles.lockHint}>🔒 Controlado por {selectedToken.ownerName}</span>
+          )}
           <div style={styles.row}>
             <label style={styles.label}>
               Tamanho
@@ -133,6 +140,7 @@ export default function Toolbar() {
                 max={5}
                 step={0.1}
                 value={selectedToken.scale}
+                disabled={!canControlToken(selectedToken)}
                 onChange={(e) => {
                   const scale = parseFloat(e.target.value);
                   updateToken(selectedToken.id, { scale });
@@ -145,15 +153,17 @@ export default function Toolbar() {
                 📋 Abrir Ficha
               </button>
             )}
-            <button
-              style={styles.btnDanger}
-              onClick={() => {
-                removeToken(selectedToken.id);
-                emitRemoveToken(selectedToken.id);
-              }}
-            >
-              Remover
-            </button>
+            {canControlToken(selectedToken) && (
+              <button
+                style={styles.btnDanger}
+                onClick={() => {
+                  removeToken(selectedToken.id);
+                  emitRemoveToken(selectedToken.id);
+                }}
+              >
+                Remover
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -210,4 +220,5 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
   },
   label: { display: "flex", flexDirection: "column", gap: 4, fontSize: 12 },
+  lockHint: { fontSize: 11, opacity: 0.7, color: "#e0b63c" },
 };

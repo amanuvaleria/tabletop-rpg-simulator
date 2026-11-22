@@ -1,6 +1,7 @@
 import { io, type Socket } from "socket.io-client";
 import { useBoardStore } from "./store";
-import type { DiceRoll, FloorKind, PropData, TokenData } from "./types";
+import type { DiceRoll, FloorKind, PlayerRole, PropData, TokenData } from "./types";
+import type { RoomUser } from "./store";
 
 // Ordem: VITE_SERVER_URL > dev (mesmo host, porta 4000, funciona via IP da rede) > mesma origem (site servido pelo servidor).
 const SERVER_URL =
@@ -20,10 +21,12 @@ interface RoomSnapshot {
   tokens: TokenData[];
   gridSize: number;
   cellSize: number;
-  users: string[];
+  users: RoomUser[];
   rolls?: DiceRoll[];
   props?: PropData[];
   floor?: FloorKind;
+  role?: PlayerRole;
+  youId?: string;
 }
 
 // Ultima sala: usada para reentrar automaticamente se a conexao cair.
@@ -34,7 +37,13 @@ function applySnapshot(snapshot: RoomSnapshot) {
   st.setTokens(snapshot.tokens || []);
   st.setRolls(snapshot.rolls || []);
   st.loadMap(snapshot.floor || "dark", snapshot.props || []);
-  st.setRoomInfo({ connectionStatus: "connected", roomUsers: snapshot.users || [], connectionError: null });
+  st.setRoomInfo({
+    connectionStatus: "connected",
+    roomUsers: snapshot.users || [],
+    connectionError: null,
+    ...(snapshot.role ? { role: snapshot.role } : {}),
+    ...(snapshot.youId ? { mySocketId: snapshot.youId } : {}),
+  });
 }
 
 function rejoin() {
@@ -65,8 +74,12 @@ function registerListeners() {
     useBoardStore.getState().addRoll(roll);
   });
 
-  socket.on("room:users", (users: string[]) => {
+  socket.on("room:users", (users: RoomUser[]) => {
     useBoardStore.getState().setRoomInfo({ roomUsers: users });
+  });
+
+  socket.on("role:update", ({ role }: { role: PlayerRole }) => {
+    useBoardStore.getState().setRoomInfo({ role });
   });
 
   socket.on("prop:added", (p: PropData) => {
@@ -150,6 +163,8 @@ export function leaveRoom() {
     roomId: null,
     connectionStatus: "disconnected",
     roomUsers: [],
+    role: null,
+    mySocketId: null,
   });
 }
 

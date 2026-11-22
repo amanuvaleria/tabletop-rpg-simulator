@@ -49,11 +49,15 @@ Criar uma plataforma web onde mestres e jogadores possam:
       Classe de Armadura, 6 atributos com modificador, anotações — tudo sincronizado
       em tempo real entre os jogadores (abre com duplo-clique no token ou botão
       "Abrir Ficha" quando selecionado)
+- [x] **Papéis (Mestre vs Jogador)**: quem cria a sala vira Mestre automaticamente
+      (promovido o próximo jogador se ele sair); Mestre controla o cenário (mapas,
+      props, piso); cada jogador só arrasta/edita/remove os tokens que ele mesmo
+      criou — tokens de outros ficam travados (🔒) com indicação de quem controla;
+      Mestre pode tudo. Validado na prática enforçado pelo servidor, não só na UI.
 
 **Próximos passos:**
 - [ ] Persistência de sala (hoje o estado é só em memória no servidor)
 - [ ] Biblioteca de assets / upload persistente (não só localStorage)
-- [ ] Papéis (Mestre vs Jogador) com permissões diferentes
 - [ ] Deploy do servidor multiplayer (pra jogar fora da rede local)
 - [ ] Mais temas visuais (moderno paranormal, terror, aventura — hoje o foco é medieval)
 

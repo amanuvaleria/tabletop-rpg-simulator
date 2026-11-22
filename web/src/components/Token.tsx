@@ -50,6 +50,7 @@ function TokenBody({
   function onPointerDown(e: any) {
     e.stopPropagation();
     selectToken(token.id);
+    if (!useBoardStore.getState().canControlToken(token)) return; // só seleciona, não arrasta
     setDragging(true);
     useBoardStore.getState().setInteracting(true);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);

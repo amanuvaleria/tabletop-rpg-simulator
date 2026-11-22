@@ -34,7 +34,11 @@ export interface TokenData {
   scale: number; // tamanho relativo do token
   rotationY: number; // rotação no plano do tabuleiro (graus)
   sheet?: CharacterSheet; // ficha: só personagens e NPCs têm
+  ownerId?: string; // socket.id de quem criou/controla (definido pelo servidor)
+  ownerName?: string; // nome de quem controla, pra exibir na UI
 }
+
+export type PlayerRole = "gm" | "player";
 
 export type CameraMode = "2d" | "3d";
 

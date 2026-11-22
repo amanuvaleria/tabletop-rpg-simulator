@@ -52,9 +52,20 @@ function getRoom(roomId) {
       rolls: [],
       props: new Map(),
       floor: "dark",
+      gmSocketId: null, // primeiro a entrar na sala vira o Mestre
     });
   }
   return rooms.get(roomId);
+}
+
+function roleOf(room, socketId) {
+  return room.gmSocketId === socketId ? "gm" : "player";
+}
+
+/** GM pode tudo; jogador só controla o que ele mesmo criou (ownerId). */
+function canControlToken(room, socketId, token) {
+  if (!token) return false;
+  return roleOf(room, socketId) === "gm" || token.ownerId === socketId;
 }
 
 function roomSnapshot(room) {
@@ -62,7 +73,10 @@ function roomSnapshot(room) {
     tokens: Array.from(room.tokens.values()),
     gridSize: room.gridSize,
     cellSize: room.cellSize,
-    users: Array.from(room.users.values()),
+    users: Array.from(room.users.entries()).map(([id, name]) => ({
+      name,
+      role: roleOf(room, id),
+    })),
     rolls: room.rolls,
     props: Array.from(room.props.values()),
     floor: room.floor,
@@ -85,34 +99,41 @@ io.on("connection", (socket) => {
 
     const room = getRoom(roomId);
     room.users.set(socket.id, userName);
+    if (!room.gmSocketId) room.gmSocketId = socket.id; // primeiro a entrar vira o Mestre
 
-    callback?.(roomSnapshot(room));
+    const snapshot = roomSnapshot(room);
+    callback?.({ ...snapshot, role: roleOf(room, socket.id), youId: socket.id });
 
     socket.to(roomId).emit("user:joined", { name: userName });
-    io.to(roomId).emit("room:users", Array.from(room.users.values()));
+    io.to(roomId).emit("room:users", snapshot.users);
   });
 
   socket.on("token:add", (token) => {
     if (!currentRoomId || !token?.id) return;
     if (typeof token.imageUrl === "string" && token.imageUrl.length > 6e6) return;
     const room = getRoom(currentRoomId);
-    room.tokens.set(token.id, token);
-    socket.to(currentRoomId).emit("token:added", token);
+    const withOwner = { ...token, ownerId: socket.id, ownerName: userName };
+    room.tokens.set(token.id, withOwner);
+    socket.to(currentRoomId).emit("token:added", withOwner);
   });
 
   socket.on("token:update", ({ id, patch }) => {
     if (!currentRoomId || !id) return;
     const room = getRoom(currentRoomId);
     const existing = room.tokens.get(id);
-    if (!existing) return;
-    const updated = { ...existing, ...patch };
+    if (!existing || !canControlToken(room, socket.id, existing)) return;
+    // ownerId nunca muda via patch do cliente (evita roubo de posse)
+    const { ownerId: _ignored, ...safePatch } = patch || {};
+    const updated = { ...existing, ...safePatch };
     room.tokens.set(id, updated);
-    socket.to(currentRoomId).emit("token:updated", { id, patch });
+    socket.to(currentRoomId).emit("token:updated", { id, patch: safePatch });
   });
 
   socket.on("token:remove", (id) => {
     if (!currentRoomId || !id) return;
     const room = getRoom(currentRoomId);
+    const existing = room.tokens.get(id);
+    if (!existing || !canControlToken(room, socket.id, existing)) return;
     room.tokens.delete(id);
     socket.to(currentRoomId).emit("token:removed", id);
   });
@@ -136,6 +157,7 @@ io.on("connection", (socket) => {
   socket.on("prop:add", (prop) => {
     if (!currentRoomId) return;
     const room = getRoom(currentRoomId);
+    if (roleOf(room, socket.id) !== "gm") return;
     const clean = sanitizeProp(prop);
     if (!clean || room.props.size >= 500) return;
     room.props.set(clean.id, clean);
@@ -145,6 +167,7 @@ io.on("connection", (socket) => {
   socket.on("prop:update", ({ id, patch } = {}) => {
     if (!currentRoomId || !id) return;
     const room = getRoom(currentRoomId);
+    if (roleOf(room, socket.id) !== "gm") return;
     const existing = room.props.get(id);
     if (!existing || !patch) return;
     const clean = sanitizeProp({ ...existing, ...patch, id });
@@ -158,7 +181,9 @@ io.on("connection", (socket) => {
 
   socket.on("prop:remove", (id) => {
     if (!currentRoomId || !id) return;
-    getRoom(currentRoomId).props.delete(id);
+    const room = getRoom(currentRoomId);
+    if (roleOf(room, socket.id) !== "gm") return;
+    room.props.delete(id);
     socket.to(currentRoomId).emit("prop:removed", id);
   });
 
@@ -166,6 +191,7 @@ io.on("connection", (socket) => {
   socket.on("map:load", ({ floor, props } = {}) => {
     if (!currentRoomId || !Array.isArray(props)) return;
     const room = getRoom(currentRoomId);
+    if (roleOf(room, socket.id) !== "gm") return;
     room.floor = FLOORS.includes(floor) ? floor : "dark";
     room.props = new Map();
     for (const p of props.slice(0, 500)) {
@@ -207,8 +233,18 @@ io.on("connection", (socket) => {
     const room = rooms.get(currentRoomId);
     if (!room) return;
     room.users.delete(socket.id);
+
+    // Se quem saiu era o Mestre, promove o próximo jogador restante (se houver).
+    if (room.gmSocketId === socket.id) {
+      const nextId = room.users.keys().next().value || null;
+      room.gmSocketId = nextId;
+      if (nextId) {
+        io.to(nextId).emit("role:update", { role: "gm" });
+      }
+    }
+
     socket.to(currentRoomId).emit("user:left", { name: userName });
-    io.to(currentRoomId).emit("room:users", Array.from(room.users.values()));
+    io.to(currentRoomId).emit("room:users", roomSnapshot(room).users);
     if (room.users.size === 0 && room.tokens.size === 0 && room.props.size === 0) {
       rooms.delete(currentRoomId);
     }
