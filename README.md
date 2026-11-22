@@ -45,11 +45,14 @@ Criar uma plataforma web onde mestres e jogadores possam:
       acampamento, Cemitério assombrado)
 - [x] Atmosfera medieval: névoa, texturas procedurais, pós-processamento
 - [x] Paleta de props (modelos medievais: casas, poço, lanternas, árvores etc.)
+- [x] **Fichas de personagem e NPC**: HP (com barra flutuante no tabuleiro 3D),
+      Classe de Armadura, 6 atributos com modificador, anotações — tudo sincronizado
+      em tempo real entre os jogadores (abre com duplo-clique no token ou botão
+      "Abrir Ficha" quando selecionado)
 
 **Próximos passos:**
 - [ ] Persistência de sala (hoje o estado é só em memória no servidor)
 - [ ] Biblioteca de assets / upload persistente (não só localStorage)
-- [ ] Fichas de personagem
 - [ ] Papéis (Mestre vs Jogador) com permissões diferentes
 - [ ] Deploy do servidor multiplayer (pra jogar fora da rede local)
 - [ ] Mais temas visuais (moderno paranormal, terror, aventura — hoje o foco é medieval)

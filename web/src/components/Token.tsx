@@ -1,5 +1,5 @@
 import { Suspense, useRef, useState } from "react";
-import { Billboard, useTexture } from "@react-three/drei";
+import { Billboard, Html, useTexture } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { TokenData } from "../types";
@@ -55,6 +55,11 @@ function TokenBody({
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   }
 
+  function onDoubleClick(e: any) {
+    e.stopPropagation();
+    if (token.sheet) useBoardStore.getState().openSheet(token.id);
+  }
+
   function onPointerUp() {
     setDragging(false);
     useBoardStore.getState().setInteracting(false);
@@ -94,6 +99,7 @@ function TokenBody({
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerMove={onPointerMove}
+      onDoubleClick={onDoubleClick}
       onPointerOut={() => {
         setDragging(false);
         useBoardStore.getState().setInteracting(false);
@@ -115,6 +121,34 @@ function TokenBody({
             <meshBasicMaterial color="#ff6666" transparent opacity={0.6} side={THREE.DoubleSide} />
           )}
         </mesh>
+        {token.sheet && (
+          <Html position={[0, token.scale * 0.58, 0]} center distanceFactor={8} occlude={false}>
+            <div
+              style={{
+                width: 44,
+                height: 6,
+                borderRadius: 3,
+                background: "rgba(10,8,6,0.75)",
+                border: "1px solid rgba(90,74,58,0.9)",
+                overflow: "hidden",
+                pointerEvents: "none",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: `${Math.max(0, Math.min(100, (token.sheet.hp / Math.max(1, token.sheet.maxHp)) * 100))}%`,
+                  background:
+                    token.sheet.hp / token.sheet.maxHp > 0.5
+                      ? "#5fd16a"
+                      : token.sheet.hp / token.sheet.maxHp > 0.2
+                      ? "#e0b63c"
+                      : "#e05c5c",
+                }}
+              />
+            </div>
+          </Html>
+        )}
       </Billboard>
       {isSelected && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>

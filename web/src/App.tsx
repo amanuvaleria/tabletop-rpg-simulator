@@ -4,6 +4,7 @@ import RoomGate from "./components/RoomGate";
 import PropPalette from "./components/PropPalette";
 import DicePanel from "./components/DicePanel";
 import RoomBadge from "./components/RoomBadge";
+import CharacterSheetPanel from "./components/CharacterSheetPanel";
 import { useBoardStore } from "./store";
 import "./App.css";
 
@@ -21,6 +22,7 @@ export default function App() {
       <RoomBadge />
       <DicePanel />
       <PropPalette />
+      <CharacterSheetPanel />
       {connectionStatus !== "connected" && (
         <div
           style={{

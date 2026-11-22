@@ -45,6 +45,11 @@ interface BoardState {
   selectToken: (id: string | null) => void;
   setCameraMode: (mode: CameraMode) => void;
 
+  // Ficha de personagem/NPC
+  sheetOpenTokenId: string | null;
+  openSheet: (id: string) => void;
+  closeSheet: () => void;
+
   setTokens: (tokens: TokenData[]) => void;
   setRoomInfo: (info: Partial<{
     roomId: string | null;
@@ -124,6 +129,10 @@ export const useBoardStore = create<BoardState>((set) => ({
   selectToken: (id) => set({ selectedTokenId: id, selectedPropId: null }),
 
   setCameraMode: (mode) => set({ cameraMode: mode }),
+
+  sheetOpenTokenId: null,
+  openSheet: (id) => set({ sheetOpenTokenId: id }),
+  closeSheet: () => set({ sheetOpenTokenId: null }),
 
   setTokens: (tokens) => set({ tokens }),
 

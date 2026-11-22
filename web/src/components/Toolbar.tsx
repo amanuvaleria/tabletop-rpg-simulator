@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useBoardStore } from "../store";
 import type { TokenKind } from "../types";
+import { defaultSheet } from "../types";
 import { emitAddToken, emitRemoveToken, emitUpdateToken } from "../multiplayer";
 
 /** Reduz a imagem (max 512px, WebP com transparencia) para o token ficar leve na rede. */
@@ -41,6 +42,7 @@ export default function Toolbar() {
   const selectedTokenId = useBoardStore((s) => s.selectedTokenId);
   const updateToken = useBoardStore((s) => s.updateToken);
   const removeToken = useBoardStore((s) => s.removeToken);
+  const openSheet = useBoardStore((s) => s.openSheet);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingKindRef = useRef<TokenKind>("character");
@@ -67,6 +69,7 @@ export default function Toolbar() {
         position: [0, 0.75, 0] as [number, number, number],
         scale: 1.5,
         rotationY: 0,
+        ...(kind !== "object" ? { sheet: defaultSheet() } : {}),
       };
       addToken(token);
       emitAddToken(token);
@@ -137,6 +140,11 @@ export default function Toolbar() {
                 }}
               />
             </label>
+            {selectedToken.sheet && (
+              <button style={styles.btn} onClick={() => openSheet(selectedToken.id)}>
+                📋 Abrir Ficha
+              </button>
+            )}
             <button
               style={styles.btnDanger}
               onClick={() => {
