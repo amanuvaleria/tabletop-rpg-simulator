@@ -40,14 +40,19 @@ Criar uma plataforma web onde mestres e jogadores possam:
 - [x] Seleção de token (redimensionar, remover)
 - [x] **Multiplayer em tempo real**: criar/entrar em sala por código ou link, sync de
       criação/edição/remoção/posição de tokens entre todos os jogadores conectados
+- [x] Sistema de dados (d4–d100, quantidade + modificador, com animação 3D e log de rolagens)
+- [x] Mapas/cenários prontos (Rua moderna, Rua medieval, Vila medieval, Floresta com
+      acampamento, Cemitério assombrado)
+- [x] Atmosfera medieval: névoa, texturas procedurais, pós-processamento
+- [x] Paleta de props (modelos medievais: casas, poço, lanternas, árvores etc.)
 
 **Próximos passos:**
 - [ ] Persistência de sala (hoje o estado é só em memória no servidor)
 - [ ] Biblioteca de assets / upload persistente (não só localStorage)
-- [ ] Mapas de fundo por tema (medieval, paranormal, terror, aventura)
-- [ ] Sistema de dados (d4–d100)
 - [ ] Fichas de personagem
 - [ ] Papéis (Mestre vs Jogador) com permissões diferentes
+- [ ] Deploy do servidor multiplayer (pra jogar fora da rede local)
+- [ ] Mais temas visuais (moderno paranormal, terror, aventura — hoje o foco é medieval)
 
 ## Como rodar localmente
 
