@@ -34,3 +34,5 @@ export interface PropData {
   scale: number;
   on?: boolean; // props com luz (poste, tocha, fogueira)
 }
+
+export type Mood = "fog" | "clear" | "night";

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CameraMode, DiceRoll, FloorKind, PropData, TokenData } from "./types";
+import type { CameraMode, DiceRoll, FloorKind, Mood, PropData, TokenData } from "./types";
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
@@ -13,14 +13,16 @@ interface BoardState {
   props: PropData[];
   selectedPropId: string | null;
   floor: FloorKind;
-  night: boolean; // so visual/local
+  mood: Mood; // clima/iluminacao (so visual/local)
+  fx: boolean; // pos-processamento ligado
   interacting: boolean; // arrastando algo: trava o orbit da camera
   addProp: (p: PropData) => void;
   updateProp: (id: string, patch: Partial<PropData>) => void;
   removeProp: (id: string) => void;
   selectProp: (id: string | null) => void;
   loadMap: (floor: FloorKind, props: PropData[]) => void;
-  setNight: (n: boolean) => void;
+  setMood: (m: Mood) => void;
+  setFx: (v: boolean) => void;
   setInteracting: (v: boolean) => void;
 
   rolls: DiceRoll[]; // histórico
@@ -63,7 +65,8 @@ export const useBoardStore = create<BoardState>((set) => ({
   props: [],
   selectedPropId: null,
   floor: "dark",
-  night: false,
+  mood: "fog",
+  fx: localStorage.getItem("fx") !== "off",
   interacting: false,
   addProp: (p) => set((s) => ({ props: [...s.props, p] })),
   updateProp: (id, patch) =>
@@ -75,7 +78,11 @@ export const useBoardStore = create<BoardState>((set) => ({
     })),
   selectProp: (id) => set({ selectedPropId: id, selectedTokenId: null }),
   loadMap: (floor, props) => set({ floor, props, selectedPropId: null }),
-  setNight: (night) => set({ night }),
+  setMood: (mood) => set({ mood }),
+  setFx: (fx) => {
+    localStorage.setItem("fx", fx ? "on" : "off");
+    set({ fx });
+  },
   setInteracting: (interacting) => set({ interacting }),
 
   rolls: [],

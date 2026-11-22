@@ -108,6 +108,7 @@ function TokenBody({
               transparent
               alphaTest={0.3}
               toneMapped={false}
+              fog={false}
               side={THREE.DoubleSide}
             />
           ) : (

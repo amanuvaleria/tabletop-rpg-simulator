@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useBoardStore } from "../store";
 import { emitAddProp, emitLoadMap, emitRemoveProp, emitUpdateProp } from "../multiplayer";
+import { MOODS } from "./Atmosphere";
+import type { Mood } from "../types";
 import { CATEGORIES, FLOORS, MAP_PRESETS, PROP_CATALOG, newProp } from "../props/catalog";
 import type { FloorKind } from "../types";
 
@@ -10,8 +12,10 @@ export default function PropPalette() {
   const props = useBoardStore((s) => s.props);
   const selectedPropId = useBoardStore((s) => s.selectedPropId);
   const floor = useBoardStore((s) => s.floor);
-  const night = useBoardStore((s) => s.night);
-  const setNight = useBoardStore((s) => s.setNight);
+  const mood = useBoardStore((s) => s.mood);
+  const setMood = useBoardStore((s) => s.setMood);
+  const fx = useBoardStore((s) => s.fx);
+  const setFx = useBoardStore((s) => s.setFx);
   const selected = props.find((p) => p.id === selectedPropId) ?? null;
   const selDef = selected ? PROP_CATALOG[selected.kind] : null;
 
@@ -102,8 +106,17 @@ export default function PropPalette() {
                 {FLOORS[f].label}
               </button>
             ))}
-            <button style={night ? styles.btnActive : styles.btn} onClick={() => setNight(!night)}>
-              {night ? "🌙 Noite" : "☀️ Dia"}
+          </div>
+
+          <strong style={styles.label}>Clima</strong>
+          <div style={styles.row}>
+            {(Object.keys(MOODS) as Mood[]).map((k) => (
+              <button key={k} style={mood === k ? styles.btnActive : styles.btn} onClick={() => setMood(k)}>
+                {MOODS[k].label}
+              </button>
+            ))}
+            <button style={fx ? styles.btnActive : styles.btn} onClick={() => setFx(!fx)} title="Desligue se estiver pesado">
+              ✨ Efeitos {fx ? "on" : "off"}
             </button>
           </div>
 

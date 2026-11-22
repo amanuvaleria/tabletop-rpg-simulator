@@ -1,6 +1,7 @@
 import type React from "react";
 import { useMemo } from "react";
 import * as THREE from "three";
+import { MEDIEVAL_KINDS, MedievalModel } from "./MedievalModels";
 
 /** Modelos 3D procedurais (formas básicas). Origem no chão; frente das construções = +Z. */
 
@@ -468,6 +469,7 @@ function Tent() {
 }
 
 export function PropModel({ kind, on }: { kind: string; on: boolean }) {
+  if (MEDIEVAL_KINDS.has(kind)) return <MedievalModel kind={kind} on={on} />;
   switch (kind) {
     case "house_modern": return <HouseModern />;
     case "building_modern": return <BuildingModern />;
