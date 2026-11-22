@@ -51,11 +51,13 @@ function TokenBody({
     e.stopPropagation();
     selectToken(token.id);
     setDragging(true);
+    useBoardStore.getState().setInteracting(true);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   }
 
   function onPointerUp() {
     setDragging(false);
+    useBoardStore.getState().setInteracting(false);
     // Garante que a posição final seja sincronizada mesmo se o throttle pulou o último frame
     emitUpdateToken(token.id, { position: lastPositionRef.current });
   }
@@ -92,7 +94,10 @@ function TokenBody({
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onPointerMove={onPointerMove}
-      onPointerOut={() => setDragging(false)}
+      onPointerOut={() => {
+        setDragging(false);
+        useBoardStore.getState().setInteracting(false);
+      }}
     >
       <Billboard follow lockX={false} lockY={false} lockZ={false}>
         <mesh scale={[token.scale, token.scale, 1]}>

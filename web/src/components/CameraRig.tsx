@@ -10,6 +10,7 @@ import type * as THREE from "three";
  */
 export default function CameraRig() {
   const cameraMode = useBoardStore((s) => s.cameraMode);
+  const interacting = useBoardStore((s) => s.interacting);
   const orthoRef = useRef<THREE.OrthographicCamera>(null);
   const perspRef = useRef<THREE.PerspectiveCamera>(null);
 
@@ -31,6 +32,7 @@ export default function CameraRig() {
       />
       <OrbitControls
         makeDefault
+        enabled={!interacting}
         enableRotate={cameraMode === "3d"}
         minPolarAngle={cameraMode === "2d" ? 0 : 0}
         maxPolarAngle={cameraMode === "2d" ? 0 : Math.PI / 2.1}

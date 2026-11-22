@@ -3,6 +3,26 @@ import { useBoardStore } from "../store";
 import type { TokenKind } from "../types";
 import { emitAddToken, emitRemoveToken, emitUpdateToken } from "../multiplayer";
 
+/** Reduz a imagem (max 512px, WebP com transparencia) para o token ficar leve na rede. */
+async function shrinkImage(file: File, max = 512): Promise<string> {
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bmp.width * k));
+    canvas.height = Math.max(1, Math.round(bmp.height * k));
+    canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    bmp.close();
+    return canvas.toDataURL("image/webp", 0.9);
+  } catch {
+    return new Promise((resolve) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.readAsDataURL(file);
+    });
+  }
+}
+
 const KIND_LABEL: Record<TokenKind, string> = {
   character: "Personagem",
   npc: "NPC",
@@ -37,10 +57,8 @@ export default function Toolbar() {
     e.target.value = "";
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const kind = pendingKindRef.current;
+    const kind = pendingKindRef.current;
+    shrinkImage(file).then((dataUrl) => {
       const token = {
         id: crypto.randomUUID(),
         name: file.name.replace(/\.[^.]+$/, ""),
@@ -52,8 +70,7 @@ export default function Toolbar() {
       };
       addToken(token);
       emitAddToken(token);
-    };
-    reader.readAsDataURL(file);
+    });
   }
 
   return (

@@ -11,3 +11,26 @@ export interface TokenData {
 }
 
 export type CameraMode = "2d" | "3d";
+
+export const DICE_SIDES = [4, 6, 8, 10, 12, 20, 100] as const;
+
+export interface DiceRoll {
+  id: string;
+  user: string;
+  sides: number;
+  results: number[];
+  modifier: number;
+  total: number;
+  at: number; // timestamp (ms)
+}
+
+export type FloorKind = "dark" | "grass" | "dirt" | "asphalt" | "cobble";
+
+export interface PropData {
+  id: string;
+  kind: string; // ver props/catalog.ts
+  position: [number, number, number];
+  rotationY: number; // radianos
+  scale: number;
+  on?: boolean; // props com luz (poste, tocha, fogueira)
+}

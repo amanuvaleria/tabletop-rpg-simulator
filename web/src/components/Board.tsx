@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useBoardStore } from "../store";
 import * as THREE from "three";
+import { FLOORS } from "../props/catalog";
 
 /**
  * Tabuleiro base: um plano com grid desenhado e um plano invisível
@@ -8,6 +9,7 @@ import * as THREE from "three";
  */
 export default function Board() {
   const { gridSize, cellSize } = useBoardStore();
+  const floor = useBoardStore((s) => s.floor);
   const size = gridSize * cellSize;
   const planeRef = useRef<THREE.Mesh>(null);
 
@@ -16,7 +18,7 @@ export default function Board() {
       {/* Base do tabuleiro (chão) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow name="board-floor" ref={planeRef}>
         <planeGeometry args={[size, size]} />
-        <meshStandardMaterial color="#2b2320" />
+        <meshStandardMaterial color={FLOORS[floor].color} />
       </mesh>
 
       {/* Grid visual */}
