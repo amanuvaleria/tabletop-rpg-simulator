@@ -4,6 +4,7 @@ import { Sparkles } from "@react-three/drei";
 import * as THREE from "three";
 import { getTextures, scaleUV, worldBox, type TexKind } from "./textures";
 
+
 /** Modelos medievais detalhados: texturas procedurais, relevo e luzes que tremulam. */
 
 type V3 = [number, number, number];

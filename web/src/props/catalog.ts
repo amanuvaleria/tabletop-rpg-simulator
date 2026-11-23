@@ -44,6 +44,15 @@ export const PROP_CATALOG: Record<string, PropDef> = {
   cart: { label: "Carroça", category: "Mobília e cenário", snap: 0.5 },
   tombstone: { label: "Lápide", category: "Mobília e cenário", snap: 0.5 },
   tent: { label: "Barraca", category: "Mobília e cenário", snap: 0.5 },
+  kit_cottage: { label: "Casa modular (Kenney)", category: "Casas", snap: 0.5 },
+  kit_inn: { label: "Sobrado (Kenney)", category: "Casas", snap: 0.5 },
+  kit_stall_red: { label: "Banca vermelha", category: "Mobília e cenário", snap: 0.5 },
+  kit_stall_green: { label: "Banca verde", category: "Mobília e cenário", snap: 0.5 },
+  kit_cart: { label: "Carroça de feira", category: "Mobília e cenário", snap: 0.5 },
+  kit_fountain: { label: "Fonte de pedra", category: "Mobília e cenário", snap: 0.5 },
+  kit_tree: { label: "Árvore esculpida", category: "Natureza", snap: 0.5 },
+  kit_rocks: { label: "Rochas agrupadas", category: "Natureza", snap: 0.5 },
+  kit_hedge: { label: "Cerca viva", category: "Natureza", snap: 0.5 },
 };
 
 export const FLOORS: Record<FloorKind, { label: string; color: string }> = {
@@ -91,6 +100,23 @@ const range = (a: number, b: number, step: number) => {
 };
 
 export const MAP_PRESETS: MapPreset[] = [
+  {
+    id: "feira_medieval", label: "Feira medieval (Kenney)", floor: "grass",
+    build: () => [
+      ...range(-9, 9, 2).flatMap(x => [P("road_cobble", x, -1), P("road_cobble", x, 1)]),
+      P("kit_cottage", -6, -6), P("kit_inn", 0, -6), P("kit_cottage", 6, -6),
+      P("kit_inn", -6, 6, Math.PI), P("kit_cottage", 6, 6, Math.PI),
+      P("kit_fountain", 0, 0, 0, 0.85),
+      P("kit_stall_red", -4, -3), P("kit_stall_green", 3, -3),
+      P("kit_stall_red", 3, 3, Math.PI), P("kit_stall_green", -3, 3, Math.PI),
+      P("kit_cart", 7.5, 2.5, Math.PI / 3),
+      P("kit_tree", -9, -7), P("kit_tree", 9, -7), P("kit_tree", -9, 7), P("kit_tree", 9, 7),
+      P("kit_rocks", -9, 0), P("kit_hedge", 0, 8, Math.PI / 2),
+      P("lamp_medieval", -6, -2), P("lamp_medieval", 6, -2),
+      P("lamp_medieval", -5, 2, Math.PI), P("lamp_medieval", 5, 2, Math.PI),
+      P("barrel", -1.5, -3), P("crate", -4.5, 3),
+    ],
+  },
   {
     id: "rua_moderna",
     label: "Rua moderna",

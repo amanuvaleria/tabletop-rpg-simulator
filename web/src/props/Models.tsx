@@ -1,3 +1,4 @@
+import { KIT_KINDS, KitModel } from "./KenneyKit";
 import type React from "react";
 import { useMemo } from "react";
 import * as THREE from "three";
@@ -469,6 +470,7 @@ function Tent() {
 }
 
 export function PropModel({ kind, on }: { kind: string; on: boolean }) {
+  if (KIT_KINDS.has(kind)) return <KitModel kind={kind} />;
   if (MEDIEVAL_KINDS.has(kind)) return <MedievalModel kind={kind} on={on} />;
   switch (kind) {
     case "house_modern": return <HouseModern />;
