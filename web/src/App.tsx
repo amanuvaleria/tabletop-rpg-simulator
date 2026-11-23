@@ -6,6 +6,7 @@ import DicePanel from "./components/DicePanel";
 import RoomBadge from "./components/RoomBadge";
 import CharacterSheetPanel from "./components/CharacterSheetPanel";
 import ScenarioPanel from "./components/ScenarioPanel";
+import SelectionDelete from "./components/SelectionDelete";
 import { useBoardStore } from "./store";
 import "./App.css";
 
@@ -20,6 +21,7 @@ export default function App() {
 
   return (
     <div className="app-root">
+      <SelectionDelete />
       <Toolbar />
       <RoomBadge />
       <DicePanel />

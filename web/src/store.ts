@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type {
-  AssetCatalog, CameraMode, DiceRoll, FloorKind, LayerState, MissingAsset, Mood, PlayerRole,
+  AssetCatalog, CameraMode, DiceRoll, FloorKind, LayerId, LayerState, MissingAsset, Mood, PlayerRole,
   PropData, ScenarioRef, SpriteData, TokenData,
 } from "./types";
 import { LAYER_META } from "./types";
@@ -27,6 +27,19 @@ interface BoardState {
   interacting: boolean; // arrastando algo: trava o orbit da camera
 
   // Sprites da biblioteca, camadas e cenário ligado a esta sala
+  selectedSpriteIds: string[];
+  selectSprites: (ids: string[]) => void;
+  toggleSprite: (id: string) => void;
+  activeLayer: LayerId | "auto";
+  setActiveLayer: (v: LayerId | "auto") => void;
+  snapGrid: boolean;
+  setSnapGrid: (v: boolean) => void;
+  undoDepth: number;
+  redoDepth: number;
+  setHistoryDepth: (u: number, r: number) => void;
+  notice: string | null;
+  setNotice: (v: string | null) => void;
+  patchLayer: (id: LayerId, patch: Partial<LayerState>) => void;
   sprites: SpriteData[];
   layers: LayerState[];
   scenario: ScenarioRef | null;
@@ -104,6 +117,17 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   mood: "fog",
   fx: localStorage.getItem("fx") !== "off",
   interacting: false,
+  selectedSpriteIds: [],
+  selectSprites: (ids) => set({selectedSpriteIds: ids, selectedTokenId:null, selectedPropId:null}),
+  toggleSprite: (id) => set(s => ({selectedSpriteIds:s.selectedSpriteIds.includes(id)?s.selectedSpriteIds.filter(x=>x!==id):[...s.selectedSpriteIds,id],selectedTokenId:null,selectedPropId:null})),
+  activeLayer: "auto",
+  setActiveLayer: (activeLayer) => set({activeLayer}),
+  snapGrid: true,
+  setSnapGrid: (snapGrid) => set({snapGrid}),
+  undoDepth:0, redoDepth:0,
+  setHistoryDepth: (undoDepth,redoDepth)=>set({undoDepth,redoDepth}),
+  notice:null, setNotice:(notice)=>set({notice}),
+  patchLayer:(id,patch)=>set(s=>({layers:s.layers.map(l=>l.id===id?{...l,...patch}:l)})),
   sprites: [],
   layers: LAYER_META.map((l) => ({ id: l.id, visible: true, locked: false })),
   scenario: null,
@@ -121,7 +145,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       cellSize: s.cellSize ?? st.cellSize,
       scenario: s.scenario === undefined ? st.scenario : s.scenario,
       missingAssets: s.missing ?? st.missingAssets,
-      selectedPropId: null,
+      selectedPropId: null, selectedSpriteIds: [],
     })),
   addProp: (p) => set((s) => ({ props: [...s.props, p] })),
   updateProp: (id, patch) =>
@@ -131,7 +155,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       props: s.props.filter((p) => p.id !== id),
       selectedPropId: s.selectedPropId === id ? null : s.selectedPropId,
     })),
-  selectProp: (id) => set({ selectedPropId: id, selectedTokenId: null }),
+  selectProp: (id) => set({ selectedPropId: id, selectedTokenId: null, selectedSpriteIds: [] }),
   loadMap: (floor, props) => set({ floor, props, selectedPropId: null }),
   setMood: (mood) => set({ mood }),
   setFx: (fx) => {
@@ -178,7 +202,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       selectedTokenId: state.selectedTokenId === id ? null : state.selectedTokenId,
     })),
 
-  selectToken: (id) => set({ selectedTokenId: id, selectedPropId: null }),
+  selectToken: (id) => set({ selectedTokenId: id, selectedPropId: null, selectedSpriteIds: [] }),
 
   setCameraMode: (mode) => set({ cameraMode: mode }),
 

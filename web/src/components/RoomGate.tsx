@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useBoardStore } from "../store";
-import { joinRoom, generateRoomCode } from "../multiplayer";
+import { joinRoom, generateRoomCode, SERVER_URL } from "../multiplayer";
 
 /**
  * Tela exibida antes de entrar no tabuleiro: escolher nome e
@@ -16,6 +16,16 @@ export default function RoomGate() {
 
   const connecting = connectionStatus === "connecting";
 
+  // Se o dono do servidor definiu uma senha de Mestre, a tela passa a oferecer o campo.
+  const [pinRequired, setPinRequired] = useState(false);
+  const [pin, setPin] = useState(() => sessionStorage.getItem("tabletop:pin") ?? "");
+  useEffect(() => {
+    fetch(`${SERVER_URL}/api/info`)
+      .then((r) => r.json())
+      .then((i: { masterLocked?: boolean }) => setPinRequired(!!i.masterLocked))
+      .catch(() => {});
+  }, []);
+
   async function enterRoom(code: string) {
     const trimmedName = name.trim() || "Jogador";
     const trimmedCode = code.trim().toUpperCase();
@@ -23,7 +33,8 @@ export default function RoomGate() {
 
     localStorage.setItem("tabletop:name", trimmedName);
     try {
-      await joinRoom(trimmedCode, trimmedName);
+      if (pinRequired) sessionStorage.setItem("tabletop:pin", pin);
+      await joinRoom(trimmedCode, trimmedName, pinRequired && pin ? pin : undefined);
       const url = new URL(window.location.href);
       url.searchParams.set("room", trimmedCode);
       window.history.replaceState(null, "", url.toString());
@@ -59,6 +70,21 @@ export default function RoomGate() {
             maxLength={32}
           />
         </label>
+
+        {pinRequired && (
+          <label style={styles.label}>
+            Senha de Mestre (deixe em branco se for jogador)
+            <input
+              style={styles.input}
+              type="password"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              placeholder="Só o Mestre precisa"
+              autoComplete="off"
+              maxLength={64}
+            />
+          </label>
+        )}
 
         <form onSubmit={handleJoin} style={styles.row}>
           <label style={{ ...styles.label, flex: 1 }}>

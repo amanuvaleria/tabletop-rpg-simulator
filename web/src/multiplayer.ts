@@ -34,10 +34,11 @@ interface RoomSnapshot {
   missingAssets?: MissingAsset[];
   role?: PlayerRole;
   youId?: string;
+  pinRejected?: boolean;
 }
 
 // Ultima sala: usada para reentrar automaticamente se a conexao cair.
-let lastRoom: { roomId: string; name: string } | null = null;
+let lastRoom: { roomId: string; name: string; pin?: string } | null = null;
 
 function applySnapshot(snapshot: RoomSnapshot) {
   const st = useBoardStore.getState();
@@ -64,7 +65,7 @@ function applySnapshot(snapshot: RoomSnapshot) {
 
 function rejoin() {
   if (!lastRoom) return;
-  socket.emit("room:join", { roomId: lastRoom.roomId, name: lastRoom.name }, (snapshot: RoomSnapshot | null) => {
+  socket.emit("room:join", { roomId: lastRoom.roomId, name: lastRoom.name, pin: lastRoom.pin }, (snapshot: RoomSnapshot | null) => {
     if (snapshot) applySnapshot(snapshot);
   });
 }
@@ -120,6 +121,14 @@ function registerListeners() {
   });
   socket.on("scenario:linked", (s: ScenarioRef | null) => useBoardStore.getState().setScenario(s));
   socket.on("assets:changed", () => void refreshCatalog());
+  socket.on("scene:sync", (s) => useBoardStore.getState().loadScene(s));
+  socket.on("sprites:changed", ({upsert,remove}: {upsert:SpriteData[];remove:string[]})=>{
+    const map=new Map(upsert.map(x=>[x.id,x]));
+    useBoardStore.setState(s=>({sprites:[...s.sprites.filter(x=>!remove.includes(x.id)&&!map.has(x.id)),...upsert]}));
+  });
+  socket.on("layers:changed", ({layers,sprites}:{layers:LayerState[];sprites?:SpriteData[]})=>{
+    useBoardStore.setState({layers,...(sprites?{sprites}:{})});
+  });
 
   socket.on("disconnect", (reason: string) => {
     useBoardStore.getState().setRoomInfo({ connectionStatus: "disconnected" });
@@ -141,7 +150,7 @@ function registerListeners() {
 }
 
 /** Conecta (ou reconecta) e entra numa sala, recebendo o snapshot atual do tabuleiro. */
-export function joinRoom(roomId: string, playerName: string): Promise<RoomSnapshot> {
+export function joinRoom(roomId: string, playerName: string, pin?: string): Promise<RoomSnapshot> {
   registerListeners();
 
   useBoardStore.getState().setRoomInfo({
@@ -161,13 +170,16 @@ export function joinRoom(roomId: string, playerName: string): Promise<RoomSnapsh
     socket.once("connect_error", onConnectError);
 
     const doJoin = () => {
-      socket.emit("room:join", { roomId, name: playerName }, (snapshot: RoomSnapshot | null) => {
+      socket.emit("room:join", { roomId, name: playerName, pin }, (snapshot: RoomSnapshot | null) => {
         cleanup();
         if (!snapshot) {
           reject(new Error("Não foi possível entrar na sala."));
           return;
         }
-        lastRoom = { roomId, name: playerName };
+        lastRoom = { roomId, name: playerName, pin };
+        if (snapshot.pinRejected) {
+          useBoardStore.getState().setNotice("Senha de Mestre incorreta ou ausente: você entrou como Jogador.");
+        }
         applySnapshot(snapshot);
         useBoardStore.getState().setRoomInfo({ roomId });
         resolve(snapshot);

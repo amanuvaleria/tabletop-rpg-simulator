@@ -2,7 +2,9 @@ import { useRef } from "react";
 import { useBoardStore } from "../store";
 import type { TokenKind } from "../types";
 import { defaultSheet } from "../types";
-import { emitAddToken, emitRemoveToken, emitUpdateToken, socket } from "../multiplayer";
+import { removeSelection } from "./SelectionDelete";
+import { PROP_CATALOG } from "../props/catalog";
+import { emitAddToken, emitUpdateToken, socket } from "../multiplayer";
 
 /** Reduz a imagem (max 512px, WebP com transparencia) para o token ficar leve na rede. */
 async function shrinkImage(file: File, max = 512): Promise<string> {
@@ -41,7 +43,12 @@ export default function Toolbar() {
   const tokens = useBoardStore((s) => s.tokens);
   const selectedTokenId = useBoardStore((s) => s.selectedTokenId);
   const updateToken = useBoardStore((s) => s.updateToken);
-  const removeToken = useBoardStore((s) => s.removeToken);
+  const props = useBoardStore(s => s.props);
+  const propId = useBoardStore(s => s.selectedPropId);
+  const spriteIds = useBoardStore(s => s.selectedSpriteIds);
+  const role = useBoardStore(s => s.role);
+  const notice = useBoardStore(s => s.notice);
+  const selectedProp = props.find(p => p.id === propId);
   const openSheet = useBoardStore((s) => s.openSheet);
   const canControlToken = useBoardStore((s) => s.canControlToken);
   const playerName = useBoardStore((s) => s.playerName);
@@ -123,6 +130,16 @@ export default function Toolbar() {
         </div>
       </div>
 
+      {role === "gm" && (selectedProp || spriteIds.length > 0) && (
+        <div style={styles.group}>
+          <strong style={styles.groupLabel}>
+            {selectedProp ? `Selecionado: ${PROP_CATALOG[selectedProp.kind]?.label ?? selectedProp.kind}` : `${spriteIds.length} objeto(s) selecionado(s)`}
+          </strong>
+          <button style={styles.btnDanger} onClick={removeSelection}>Excluir objeto (Delete)</button>
+          <small>Selecione no mapa e clique aqui ou pressione Delete.</small>
+        </div>
+      )}
+      {notice && <small role="status">{notice}</small>}
       {selectedToken && (
         <div style={styles.group}>
           <strong style={styles.groupLabel}>
@@ -157,11 +174,10 @@ export default function Toolbar() {
               <button
                 style={styles.btnDanger}
                 onClick={() => {
-                  removeToken(selectedToken.id);
-                  emitRemoveToken(selectedToken.id);
+                  removeSelection();
                 }}
               >
-                Remover
+                Excluir objeto (Delete)
               </button>
             )}
           </div>
