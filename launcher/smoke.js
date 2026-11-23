@@ -82,6 +82,19 @@ async function runSmoke({ outDir, win, handlers, server, tunnel, saveSettings, g
     await sleep(300);
     ok(swap.ok && pedro.events.some((e) => e.role === "gm") && marina.events.some((e) => e.role === "player"), "botão Tornar Mestre troca o papel dos dois");
 
+    // ---------- Mestre designado por IP (IP do peer, sem confiar em X-Forwarded-For por padrão)
+    const cfgWrongIp = await handlers["master:save"](null, { masterName: "", masterPin: "", masterIp: "192.0.2.123" });
+    const wrongIpClient = await connect();
+    const wrongIpJoin = await join(wrongIpClient, "IP-NAO-BATE", "Convidado");
+    ok(cfgWrongIp.ok && wrongIpJoin.role === "player", "IP não correspondente não ganha papel de Mestre");
+    const adminState = await server.admin("GET", "/admin/state");
+    const seenIp = adminState.rooms.find((r) => r.id === "IP-NAO-BATE")?.users.find((u) => u.name === "Convidado")?.ip;
+    const cfgRightIp = await handlers["master:save"](null, { masterName: "", masterPin: "", masterIp: seenIp });
+    const rightIpClient = await connect();
+    const rightIpJoin = await join(rightIpClient, "IP-BATE", "Outro Nome");
+    ok(!!seenIp && cfgRightIp.ok && rightIpJoin.role === "gm", "IP correspondente promove a Mestre sem depender do nickname");
+    wrongIpClient.disconnect(); rightIpClient.disconnect();
+
     // ---------- salvar ao desligar (sem esperar o autosave de 1,5 s)
     const gm = pedro;
     gm.emit("prop:add", { id: "smoke-prop", kind: "crate", position: [2, 0, 2], rotationY: 0, scale: 1 });

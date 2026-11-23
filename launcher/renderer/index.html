@@ -82,18 +82,28 @@
     <section id="tab-master" class="tab">
       <div class="card">
         <h2>Quem é o Mestre</h2>
-        <p class="muted">Sem Mestre fixo, quem entra primeiro na sala vira Mestre. Com Mestre fixo, só a pessoa com este nome (e a senha, se você definir) assume o cargo; ninguém mais herda.</p>
+        <p class="muted">Sem Mestre fixo, quem entra primeiro na sala vira Mestre. Com Mestre fixo, a pessoa que bater com o <b>nome</b> (e a senha, se você definir) <i>ou</i> com o <b>IP</b> configurado assume o cargo; ninguém mais herda.</p>
         <div class="row gap wrap">
           <label>Nome do Mestre <input id="m-name" maxlength="32" placeholder="Ex.: Marina" /></label>
           <label>Senha (opcional) <input id="m-pin" type="password" maxlength="64" placeholder="Deixe vazio para só usar o nome" autocomplete="off" /></label>
           <label class="check"><input id="m-show" type="checkbox" /> mostrar senha</label>
+        </div>
+        <div class="row gap wrap" style="margin-top:8px">
+          <label>IP do computador do Mestre (opcional) <input id="m-ip" maxlength="64" placeholder="Ex.: 192.168.3.122" /></label>
+          <select id="m-ip-pick"></select>
         </div>
         <div class="row gap" style="margin-top:10px">
           <button id="m-save" class="primary">Salvar Mestre fixo</button>
           <button id="m-clear">Remover Mestre fixo</button>
         </div>
         <div id="m-msg" class="msg hidden"></div>
-        <div class="hint">Com senha, a tela de entrada do jogo passa a mostrar o campo “Senha de Mestre” para todos; só quem a digitar corretamente vira Mestre.</div>
+        <div class="hint">
+          Com senha, a tela de entrada do jogo passa a mostrar o campo “Senha de Mestre” para todos; só quem a
+          digitar corretamente vira Mestre. Com IP, quem entrar <i>a partir daquele computador</i> já vira Mestre
+          direto, sem precisar de senha. Atenção: o IP pode ser compartilhado (mesma rede/NAT) e, atrás de túnel ou proxy,
+          o servidor pode ver o IP do proxy; para esses casos, prefira nickname + senha. Pode usar os dois: qualquer um
+          dos critérios que bater já promove.
+        </div>
       </div>
 
       <div class="card">

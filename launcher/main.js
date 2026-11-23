@@ -61,9 +61,9 @@ const configFile = () => path.join(settings.dataDir, "config.json");
 function readMasterConfig() {
   try {
     const c = JSON.parse(fs.readFileSync(configFile(), "utf8"));
-    return { masterName: String(c.masterName || ""), masterPin: String(c.masterPin || "") };
+    return { masterName: String(c.masterName || ""), masterPin: String(c.masterPin || ""), masterIp: String(c.masterIp || "") };
   } catch {
-    return { masterName: "", masterPin: "" };
+    return { masterName: "", masterPin: "", masterIp: "" };
   }
 }
 
@@ -71,6 +71,14 @@ function lanAddresses(port) {
   const out = [];
   for (const list of Object.values(os.networkInterfaces())) {
     for (const i of list || []) if (i.family === "IPv4" && !i.internal) out.push(`http://${i.address}:${port}`);
+  }
+  return out;
+}
+
+function lanIps() {
+  const out = [];
+  for (const list of Object.values(os.networkInterfaces())) {
+    for (const i of list || []) if (i.family === "IPv4" && !i.internal) out.push(i.address);
   }
   return out;
 }
@@ -94,6 +102,7 @@ async function snapshot() {
     tunnel: tunnel.snapshot(),
     localUrl: `http://localhost:${settings.port}`,
     lan: lanAddresses(settings.port),
+    lanIps: lanIps(),
     packsDir: packsDir(),
     categories: CATEGORIES.map(([id, label]) => ({ id, label })),
     master: readMasterConfig(),
@@ -203,8 +212,12 @@ const handlers = {
     return { ok: true };
   },
 
-  "master:save": async (_e, { masterName = "", masterPin = "" } = {}) => {
-    const cfg = { masterName: String(masterName).trim().slice(0, 32), masterPin: String(masterPin).slice(0, 64) };
+  "master:save": async (_e, { masterName = "", masterPin = "", masterIp = "" } = {}) => {
+    const cfg = {
+      masterName: String(masterName).trim().slice(0, 32),
+      masterPin: String(masterPin).slice(0, 64),
+      masterIp: String(masterIp).trim().slice(0, 64),
+    };
     fs.mkdirSync(settings.dataDir, { recursive: true });
     fs.writeFileSync(configFile(), JSON.stringify(cfg));
     if (server.status === "running") {

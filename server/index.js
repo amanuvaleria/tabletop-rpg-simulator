@@ -37,6 +37,7 @@ function loadConfig() {
   return {
     masterName: typeof c.masterName === "string" ? c.masterName.trim().slice(0, 32) : "",
     masterPin: typeof c.masterPin === "string" ? c.masterPin.slice(0, 64) : "",
+    masterIp: typeof c.masterIp === "string" ? c.masterIp.trim().slice(0, 64) : "",
   };
 }
 let config = loadConfig();
@@ -44,11 +45,25 @@ function saveConfig(patch) {
   config = {
     masterName: typeof patch.masterName === "string" ? patch.masterName.trim().slice(0, 32) : config.masterName,
     masterPin: typeof patch.masterPin === "string" ? patch.masterPin.slice(0, 64) : config.masterPin,
+    masterIp: typeof patch.masterIp === "string" ? patch.masterIp.trim().slice(0, 64) : config.masterIp,
   };
   require("./lib/storage").atomicWriteJson(CONFIG_FILE, config);
 }
 const sameName = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
-const masterDesignated = () => !!config.masterName;
+const masterDesignated = () => !!config.masterName || !!config.masterIp;
+
+/** IP do peer direto. Só confia em X-Forwarded-For quando o operador habilita proxy confiável. */
+function clientIp(socket) {
+  const direct = socket.handshake.address || "";
+  let ip = direct;
+  if (process.env.TRUST_PROXY_HEADERS === "1") {
+    const xf = socket.handshake.headers["x-forwarded-for"];
+    if (xf) ip = String(xf).split(",")[0].trim();
+  }
+  if (ip.startsWith("::ffff:")) ip = ip.slice(7);
+  if (ip === "::1") ip = "127.0.0.1";
+  return ip;
+}
 
 const scenarioStore = new scen.ScenarioStore(path.join(DATA_ROOT, "scenarios"));
 fs.mkdirSync(PACK_DIRS[1], { recursive: true });
@@ -203,6 +218,7 @@ function getRoom(roomId) {
       gridSize: fromDisk?.gridSize || 20,
       cellSize: fromDisk?.cellSize || 1,
       users: new Map(),
+      userIps: new Map(),
       rolls: fromDisk?.rolls || [],
       props: fromDisk?.props || new Map(),
       sprites: fromDisk?.sprites || new Map(),
@@ -338,10 +354,17 @@ io.on("connection", (socket) => {
 
     const room = getRoom(roomId);
     room.users.set(socket.id, userName);
+    const ip = clientIp(socket);
+    room.userIps.set(socket.id, ip);
     let pinRejected = false;
     if (masterDesignated()) {
-      // Há um Mestre designado no app de controle: só ele (pelo nome, e pela senha se existir) assume.
-      if (sameName(userName, config.masterName)) {
+      // Há um Mestre designado no app de controle: por IP (sem senha, já é um sinal forte
+      // de "é o computador do Mestre") ou por nome (+ senha, se configurada).
+      const ipMatches = !!config.masterIp && !!ip && ip === config.masterIp;
+      const nameMatches = !!config.masterName && sameName(userName, config.masterName);
+      if (ipMatches) {
+        if (room.gmSocketId !== socket.id) setGm(roomId, room, socket.id);
+      } else if (nameMatches) {
         if (config.masterPin && pin !== config.masterPin) pinRejected = true;
         else if (room.gmSocketId !== socket.id) setGm(roomId, room, socket.id);
       }
@@ -777,6 +800,7 @@ io.on("connection", (socket) => {
     const room = rooms.get(currentRoomId);
     if (!room) return;
     room.users.delete(socket.id);
+    room.userIps.delete(socket.id);
 
     // Se quem saiu era o Mestre, promove o próximo jogador restante (se houver).
     if (room.gmSocketId === socket.id) {
@@ -835,14 +859,14 @@ if (ADMIN_PORT && ADMIN_TOKEN) {
         for (const [id, room] of rooms.entries()) {
           list.push({
             id,
-            users: Array.from(room.users.entries()).map(([sid, name]) => ({ id: sid, name, role: roleOf(room, sid) })),
+            users: Array.from(room.users.entries()).map(([sid, name]) => ({ id: sid, name, role: roleOf(room, sid), ip: room.userIps.get(sid) || "" })),
             tokens: room.tokens.size,
             props: room.props.size,
             sprites: room.sprites.size,
             scenario: scenarioInfo(room),
           });
         }
-        return send(200, { ok: true, port: PORT, rooms: list, config: { masterName: config.masterName, hasPin: !!config.masterPin }, assets: library.publicCatalog().packs });
+        return send(200, { ok: true, port: PORT, rooms: list, config: { masterName: config.masterName, hasPin: !!config.masterPin, masterIp: config.masterIp }, assets: library.publicCatalog().packs });
       }
       if (req.method === "POST" && url.pathname === "/admin/master") {
         const b = await readBody();
@@ -860,8 +884,8 @@ if (ADMIN_PORT && ADMIN_TOKEN) {
       }
       if (req.method === "POST" && url.pathname === "/admin/config") {
         const b = await readBody();
-        saveConfig({ masterName: b.masterName, masterPin: b.masterPin });
-        return send(200, { ok: true, config: { masterName: config.masterName, hasPin: !!config.masterPin } });
+        saveConfig({ masterName: b.masterName, masterPin: b.masterPin, masterIp: b.masterIp });
+        return send(200, { ok: true, config: { masterName: config.masterName, hasPin: !!config.masterPin, masterIp: config.masterIp } });
       }
       if (req.method === "POST" && url.pathname === "/admin/assets/refresh") {
         library.invalidate();

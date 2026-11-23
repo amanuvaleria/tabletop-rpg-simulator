@@ -143,28 +143,41 @@ $("data-backup").addEventListener("click", async () => {
 // ------------------------------------------------------------------ Mestre e salas
 $("m-show").addEventListener("change", () => ($("m-pin").type = $("m-show").checked ? "text" : "password"));
 
-async function saveMaster(name, pin) {
-  const r = await api.invoke("master:save", { masterName: name, masterPin: pin });
+async function saveMaster(name, pin, ip) {
+  const r = await api.invoke("master:save", { masterName: name, masterPin: pin, masterIp: ip });
   if (!r.ok) return say("m-msg", "err", esc(r.error));
   S.master = r.master;
+  const bits = [];
+  if (r.master.masterName) bits.push(`nome <b>${esc(r.master.masterName)}</b>${r.master.masterPin ? " (com senha)" : " (sem senha)"}`);
+  if (r.master.masterIp) bits.push(`IP <b>${esc(r.master.masterIp)}</b>`);
   say(
     "m-msg",
     "ok",
-    r.master.masterName
-      ? `Mestre fixo: <b>${esc(r.master.masterName)}</b>${r.master.masterPin ? " (com senha)" : " (sem senha)"}. Vale para as próximas entradas; quem já está na sala mantém o papel atual até você usar “Tornar Mestre”.`
+    bits.length
+      ? `Mestre fixo: ${bits.join(" ou ")}. Vale para as próximas entradas; quem já está na sala mantém o papel atual até você usar “Tornar Mestre”.`
       : "Mestre fixo removido: volta a valer “o primeiro a entrar vira Mestre”."
   );
 }
 $("m-save").addEventListener("click", () => {
   const name = $("m-name").value.trim();
-  if (!name) return say("m-msg", "err", "Digite o nome do Mestre (o mesmo que ele usa ao entrar no jogo).");
-  saveMaster(name, $("m-pin").value);
+  const ip = $("m-ip").value.trim();
+  if (!name && !ip) return say("m-msg", "err", "Digite o nome do Mestre e/ou o IP do computador dele.");
+  saveMaster(name, $("m-pin").value, ip);
 });
 $("m-clear").addEventListener("click", () => {
   $("m-name").value = "";
   $("m-pin").value = "";
-  saveMaster("", "");
+  $("m-ip").value = "";
+  saveMaster("", "", "");
 });
+function renderIpPicker() {
+  const sel = $("m-ip-pick");
+  sel.innerHTML = '<option value="">Usar meu IP…</option>' + (S.lanIps || []).map((ip) => `<option value="${esc(ip)}">${esc(ip)}</option>`).join("");
+  sel.addEventListener("change", () => {
+    if (sel.value) $("m-ip").value = sel.value;
+    sel.value = "";
+  });
+}
 
 async function refreshRooms() {
   if (!S || S.server.status !== "running") return;
@@ -182,7 +195,8 @@ async function refreshRooms() {
       ${room.users
         .map(
           (u) => `<div class="user"><div>${u.role === "gm" ? "👑" : "🎭"} ${esc(u.name)}
-            <span class="badge ${u.role === "gm" ? "" : "p"}">${u.role === "gm" ? "Mestre" : "Jogador"}</span></div>
+            <span class="badge ${u.role === "gm" ? "" : "p"}">${u.role === "gm" ? "Mestre" : "Jogador"}</span>
+            ${u.ip ? `<span class="muted"> · ${esc(u.ip)}</span>` : ""}</div>
             <div class="row gap">
               ${u.role === "gm" ? "" : `<button data-act="master" data-room="${esc(room.id)}" data-id="${esc(u.id)}">Tornar Mestre</button>`}
               <button class="danger" data-act="kick" data-room="${esc(room.id)}" data-id="${esc(u.id)}">Expulsar</button>
@@ -306,6 +320,8 @@ api.on("tunnel:status", (t) => renderTunnel(t));
   $("autostart").checked = S.settings.autoStart;
   $("m-name").value = S.master.masterName;
   $("m-pin").value = S.master.masterPin;
+  $("m-ip").value = S.master.masterIp || "";
+  renderIpPicker();
   $("a-cat").innerHTML = S.categories.map((c) => `<option value="${c.id}">${esc(c.label)}</option>`).join("");
   $("a-cat").value = "furniture";
   renderAddresses();

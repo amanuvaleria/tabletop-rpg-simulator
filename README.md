@@ -42,9 +42,8 @@ Criar uma plataforma web onde mestres e jogadores possam:
 - [x] **Multiplayer em tempo real**: criar/entrar em sala por código ou link, sync de
       criação/edição/remoção/posição de tokens entre todos os jogadores conectados
 - [x] Sistema de dados (d4–d100, quantidade + modificador, com animação 3D e log de rolagens)
-- [x] Mapas/cenários prontos (Rua moderna, Rua medieval, Vila medieval, Floresta com
-      acampamento, Cemitério assombrado)
-- [x] Atmosfera medieval: névoa, texturas procedurais, pós-processamento
+- [x] Mapas/cenários prontos (inclui Feira medieval com modelos Kenney e Mansão assombrada)
+- [x] Atmosfera medieval/terror: névoa, texturas procedurais, pós-processamento
 - [x] Paleta de props (modelos medievais: casas, poço, lanternas, árvores etc.)
 - [x] **Fichas de personagem e NPC**: HP (com barra flutuante no tabuleiro 3D),
       Classe de Armadura, 6 atributos com modificador, anotações — tudo sincronizado
@@ -59,13 +58,19 @@ Criar uma plataforma web onde mestres e jogadores possam:
       disco (JSON por sala, debounce de 1.5s) e recarregados automaticamente —
       derrubar/reiniciar o servidor não perde a campanha. Flush imediato ao sala
       ficar vazia e ao encerrar o processo (SIGINT/SIGTERM).
-- [x] **Deploy público (túnel)**: o servidor serve o cliente buildado
-      (`web/dist`) na mesma porta, então basta expor UMA porta. Documentado
-      abaixo como expor com Cloudflare Tunnel (sem precisar de conta) pra
-      jogar com o grupo fora da rede local.
+- [x] **Deploy público via Cloudflare Tunnel**: o servidor serve o `web/dist` e a API na mesma porta;
+      o launcher também tem controle do link temporário.
+- [x] **Launcher Electron (Tabletop Mestre)**: programa Windows para ligar/desligar o servidor,
+      designar Mestre por nickname+PIN ou IP, importar/remover assets, gerenciar salas,
+      fazer backup e abrir o jogo pelo botão do navegador. A build portátil fica em
+      `launcher/dist/Tabletop Mestre-win32-x64/`.
+- [x] **Biblioteca de assets e cenários**: uploads persistidos, cenários salvos no servidor,
+      catálogo CC0 Kenney e importador de PNG/WebP/SVG com validação.
+- [x] **Mansão assombrada**: preset editável com os modelos 3D já incluídos; as pranchas enviadas
+      foram guardadas como referências em `docs/references/` (não são modelos 3D individuais).
 
 **Próximos passos:**
-- [ ] Biblioteca de assets / upload persistente (não só localStorage)
+- [ ] Importar modelos individuais da mansão (GLB/GLTF) e recortes PNG transparentes — as pranchas de referência não bastam para gerar props 3D fiéis
 - [ ] Hospedagem permanente (Railway/Render/Fly.io) — o túnel documentado abaixo
       é só pra sessões de jogo pontuais, ele morre quando o processo para
 - [ ] Mais temas visuais (moderno paranormal, terror, aventura — hoje o foco é medieval)
