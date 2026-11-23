@@ -1,0 +1,16 @@
+{
+  "name": "tabletop-mestre",
+  "productName": "Tabletop Mestre",
+  "version": "1.0.0",
+  "description": "Painel do Mestre: liga o servidor do tabletop, define o Mestre e gerencia assets.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^45.4.1"
+  }
+}

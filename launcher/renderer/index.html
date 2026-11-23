@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' file: data:;" />
+  <title>Tabletop RPG — Painel do Mestre</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">🎲 <b>Tabletop RPG</b> <span class="muted">Painel do Mestre</span></div>
+    <div id="top-status" class="pill off">● Servidor desligado</div>
+  </header>
+
+  <nav id="tabs">
+    <button data-tab="server" class="active">Servidor</button>
+    <button data-tab="master">Mestre e salas</button>
+    <button data-tab="assets">Assets</button>
+    <button data-tab="log">Registro</button>
+  </nav>
+
+  <main>
+    <!-- ================= Servidor ================= -->
+    <section id="tab-server" class="tab active">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Servidor do jogo</h2>
+            <div id="srv-text" class="muted">Desligado. Ligue para os jogadores poderem entrar.</div>
+          </div>
+          <button id="btn-server" class="big primary">Ligar servidor</button>
+        </div>
+        <div class="row gap" style="margin-top:12px">
+          <label>Porta <input id="port" type="number" min="1024" max="65535" /></label>
+          <label class="check"><input id="autostart" type="checkbox" /> Ligar o servidor ao abrir este programa</label>
+        </div>
+        <div id="srv-error" class="msg err hidden"></div>
+      </div>
+
+      <div class="card">
+        <h2>Como entrar</h2>
+        <div class="addr">
+          <div><span class="label">Neste computador</span><code id="url-local"></code></div>
+          <div class="row gap"><button id="open-local">Abrir no navegador</button><button data-copy="url-local">Copiar</button></div>
+        </div>
+        <div id="lan-list"></div>
+        <div class="hint">Na mesma rede Wi-Fi/cabo, os amigos usam o endereço “Mesma rede”. O Windows pode pedir permissão no firewall na primeira vez: aceite em “Redes privadas”.</div>
+      </div>
+
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2>Link público (jogar pela internet)</h2>
+            <div id="tun-text" class="muted">Cria um endereço temporário que seus amigos podem abrir de qualquer lugar.</div>
+          </div>
+          <button id="btn-tunnel">Ligar link público</button>
+        </div>
+        <div id="tun-url-row" class="addr hidden">
+          <div><span class="label">Envie este link</span><code id="tun-url"></code></div>
+          <div class="row gap"><button id="open-tun">Abrir</button><button data-copy="tun-url">Copiar</button></div>
+        </div>
+        <div id="tun-install" class="msg warn hidden">
+          O programa <b>cloudflared</b> não está instalado.
+          <button id="btn-install">Instalar agora (winget)</button>
+        </div>
+        <div class="hint">O endereço muda toda vez que o link é religado. Só quem tem o link e o código da sala consegue entrar.</div>
+      </div>
+
+      <div class="card">
+        <h2>Dados do jogo</h2>
+        <div class="addr"><div><span class="label">Pasta (salas, cenários, uploads)</span><code id="data-dir"></code></div></div>
+        <div class="row gap">
+          <button id="data-open">Abrir pasta</button>
+          <button id="data-choose">Trocar pasta…</button>
+          <button id="data-backup">Fazer backup agora</button>
+        </div>
+        <div id="data-msg" class="msg hidden"></div>
+      </div>
+    </section>
+
+    <!-- ================= Mestre ================= -->
+    <section id="tab-master" class="tab">
+      <div class="card">
+        <h2>Quem é o Mestre</h2>
+        <p class="muted">Sem Mestre fixo, quem entra primeiro na sala vira Mestre. Com Mestre fixo, só a pessoa com este nome (e a senha, se você definir) assume o cargo; ninguém mais herda.</p>
+        <div class="row gap wrap">
+          <label>Nome do Mestre <input id="m-name" maxlength="32" placeholder="Ex.: Marina" /></label>
+          <label>Senha (opcional) <input id="m-pin" type="password" maxlength="64" placeholder="Deixe vazio para só usar o nome" autocomplete="off" /></label>
+          <label class="check"><input id="m-show" type="checkbox" /> mostrar senha</label>
+        </div>
+        <div class="row gap" style="margin-top:10px">
+          <button id="m-save" class="primary">Salvar Mestre fixo</button>
+          <button id="m-clear">Remover Mestre fixo</button>
+        </div>
+        <div id="m-msg" class="msg hidden"></div>
+        <div class="hint">Com senha, a tela de entrada do jogo passa a mostrar o campo “Senha de Mestre” para todos; só quem a digitar corretamente vira Mestre.</div>
+      </div>
+
+      <div class="card">
+        <div class="row between"><h2>Salas ao vivo</h2><span id="rooms-info" class="muted"></span></div>
+        <div id="rooms"></div>
+      </div>
+    </section>
+
+    <!-- ================= Assets ================= -->
+    <section id="tab-assets" class="tab">
+      <div class="card" id="drop">
+        <h2>Adicionar assets</h2>
+        <p class="muted">Imagens PNG, WebP ou SVG com fundo transparente. Elas ficam no servidor e aparecem na biblioteca do jogo sem reiniciar nada. Você também pode <b>arrastar arquivos para esta caixa</b>.</p>
+        <div class="row gap wrap">
+          <label>Pacote <input id="a-pack" value="Meus assets" maxlength="60" /></label>
+          <label>Categoria <select id="a-cat"></select></label>
+        </div>
+        <div class="row gap" style="margin-top:10px">
+          <button id="a-add" class="primary">Adicionar imagens…</button>
+          <button id="a-pack-add">Adicionar pasta de pacote…</button>
+          <button id="a-open">Abrir pasta de pacotes</button>
+        </div>
+        <div id="a-msg" class="msg hidden"></div>
+      </div>
+
+      <div class="card">
+        <div class="row between"><h2>Biblioteca</h2><input id="a-search" placeholder="Buscar por nome ou tag…" /></div>
+        <div id="a-packs"></div>
+        <div id="a-grid" class="grid"></div>
+        <div id="a-count" class="hint"></div>
+      </div>
+    </section>
+
+    <!-- ================= Registro ================= -->
+    <section id="tab-log" class="tab">
+      <div class="card">
+        <div class="row between"><h2>Registro do servidor</h2>
+          <div class="row gap"><button id="log-copy">Copiar</button><button id="log-clear">Limpar</button></div>
+        </div>
+        <pre id="log"></pre>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="hidden"></div>
+  <script src="renderer.js"></script>
+</body>
+</html>
