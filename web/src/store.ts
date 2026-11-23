@@ -1,5 +1,9 @@
 import { create } from "zustand";
-import type { CameraMode, DiceRoll, FloorKind, Mood, PlayerRole, PropData, TokenData } from "./types";
+import type {
+  AssetCatalog, CameraMode, DiceRoll, FloorKind, LayerState, MissingAsset, Mood, PlayerRole,
+  PropData, ScenarioRef, SpriteData, TokenData,
+} from "./types";
+import { LAYER_META } from "./types";
 
 export type ConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
 
@@ -21,6 +25,20 @@ interface BoardState {
   mood: Mood; // clima/iluminacao (so visual/local)
   fx: boolean; // pos-processamento ligado
   interacting: boolean; // arrastando algo: trava o orbit da camera
+
+  // Sprites da biblioteca, camadas e cenário ligado a esta sala
+  sprites: SpriteData[];
+  layers: LayerState[];
+  scenario: ScenarioRef | null;
+  missingAssets: MissingAsset[];
+  catalog: AssetCatalog | null;
+  setCatalog: (c: AssetCatalog | null) => void;
+  setScenario: (s: ScenarioRef | null) => void;
+  /** Substitui o mapa inteiro (props, sprites, camadas, piso, grade) de uma vez. */
+  loadScene: (s: {
+    floor: FloorKind; props: PropData[]; sprites?: SpriteData[]; layers?: LayerState[];
+    gridSize?: number; cellSize?: number; scenario?: ScenarioRef | null; missing?: MissingAsset[];
+  }) => void;
   addProp: (p: PropData) => void;
   updateProp: (id: string, patch: Partial<PropData>) => void;
   removeProp: (id: string) => void;
@@ -86,6 +104,25 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   mood: "fog",
   fx: localStorage.getItem("fx") !== "off",
   interacting: false,
+  sprites: [],
+  layers: LAYER_META.map((l) => ({ id: l.id, visible: true, locked: false })),
+  scenario: null,
+  missingAssets: [],
+  catalog: null,
+  setCatalog: (catalog) => set({ catalog }),
+  setScenario: (scenario) => set({ scenario }),
+  loadScene: (s) =>
+    set((st) => ({
+      floor: s.floor,
+      props: s.props,
+      sprites: s.sprites ?? [],
+      layers: s.layers ?? st.layers,
+      gridSize: s.gridSize ?? st.gridSize,
+      cellSize: s.cellSize ?? st.cellSize,
+      scenario: s.scenario === undefined ? st.scenario : s.scenario,
+      missingAssets: s.missing ?? st.missingAssets,
+      selectedPropId: null,
+    })),
   addProp: (p) => set((s) => ({ props: [...s.props, p] })),
   updateProp: (id, patch) =>
     set((s) => ({ props: s.props.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),

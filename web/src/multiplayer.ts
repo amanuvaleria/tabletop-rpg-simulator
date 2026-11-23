@@ -1,10 +1,13 @@
 import { io, type Socket } from "socket.io-client";
 import { useBoardStore } from "./store";
-import type { DiceRoll, FloorKind, PlayerRole, PropData, TokenData } from "./types";
+import type {
+  AssetCatalog, DiceRoll, FloorKind, LayerState, MissingAsset, Mood, PlayerRole, PropData,
+  ScenarioRef, SpriteData, TokenData,
+} from "./types";
 import type { RoomUser } from "./store";
 
 // Ordem: VITE_SERVER_URL > dev (mesmo host, porta 4000, funciona via IP da rede) > mesma origem (site servido pelo servidor).
-const SERVER_URL =
+export const SERVER_URL =
   (import.meta.env.VITE_SERVER_URL as string | undefined) ||
   (import.meta.env.DEV
     ? `${window.location.protocol}//${window.location.hostname}:4000`
@@ -25,6 +28,10 @@ interface RoomSnapshot {
   rolls?: DiceRoll[];
   props?: PropData[];
   floor?: FloorKind;
+  sprites?: SpriteData[];
+  layers?: LayerState[];
+  scenario?: ScenarioRef | null;
+  missingAssets?: MissingAsset[];
   role?: PlayerRole;
   youId?: string;
 }
@@ -36,7 +43,16 @@ function applySnapshot(snapshot: RoomSnapshot) {
   const st = useBoardStore.getState();
   st.setTokens(snapshot.tokens || []);
   st.setRolls(snapshot.rolls || []);
-  st.loadMap(snapshot.floor || "dark", snapshot.props || []);
+  st.loadScene({
+    floor: snapshot.floor || "dark",
+    props: snapshot.props || [],
+    sprites: snapshot.sprites || [],
+    layers: snapshot.layers,
+    gridSize: snapshot.gridSize,
+    cellSize: snapshot.cellSize,
+    scenario: snapshot.scenario ?? null,
+    missing: snapshot.missingAssets || [],
+  });
   st.setRoomInfo({
     connectionStatus: "connected",
     roomUsers: snapshot.users || [],
@@ -93,6 +109,17 @@ function registerListeners() {
   socket.on("map:loaded", ({ floor, props }: { floor: FloorKind; props: PropData[] }) => {
     useBoardStore.getState().loadMap(floor, props);
   });
+
+  // Cenário carregado/criado pelo Mestre: substitui o mapa de todos.
+  socket.on("scenario:loaded", (s: {
+    floor: FloorKind; props: PropData[]; sprites: SpriteData[]; layers: LayerState[];
+    gridSize: number; cellSize: number; scenario: ScenarioRef | null; missing: MissingAsset[]; mood?: Mood;
+  }) => {
+    useBoardStore.getState().loadScene(s);
+    if (s.mood) useBoardStore.getState().setMood(s.mood);
+  });
+  socket.on("scenario:linked", (s: ScenarioRef | null) => useBoardStore.getState().setScenario(s));
+  socket.on("assets:changed", () => void refreshCatalog());
 
   socket.on("disconnect", (reason: string) => {
     useBoardStore.getState().setRoomInfo({ connectionStatus: "disconnected" });
@@ -205,4 +232,34 @@ export function generateRoomCode(): string {
     code += chars[Math.floor(Math.random() * chars.length)];
   }
   return code;
+}
+
+/** Chamada com confirmação (ack) do servidor; rejeita se a conexão cair. */
+export function rpc<T = { ok: boolean; error?: string }>(event: string, payload: unknown = {}): Promise<T> {
+  return new Promise((resolve, reject) => {
+    if (!socket.connected) return reject(new Error("Sem conexão com o servidor."));
+    const timer = setTimeout(() => reject(new Error("O servidor não respondeu.")), 15000);
+    socket.emit(event, payload, (res: T) => {
+      clearTimeout(timer);
+      resolve(res);
+    });
+  });
+}
+
+/** Baixa o catálogo de assets (pacotes + uploads) e guarda no estado. */
+export async function refreshCatalog(force = false): Promise<AssetCatalog | null> {
+  try {
+    const res = await fetch(`${SERVER_URL}/api/assets${force ? "?refresh=1" : ""}`);
+    if (!res.ok) throw new Error(String(res.status));
+    const cat = (await res.json()) as AssetCatalog;
+    useBoardStore.getState().setCatalog(cat);
+    return cat;
+  } catch {
+    return null;
+  }
+}
+
+/** URL absoluta de um arquivo de asset (o servidor pode estar em outra origem no modo dev). */
+export function assetUrl(rel: string): string {
+  return /^https?:/.test(rel) ? rel : SERVER_URL + rel;
 }

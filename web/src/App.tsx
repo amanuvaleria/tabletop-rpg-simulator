@@ -5,6 +5,7 @@ import PropPalette from "./components/PropPalette";
 import DicePanel from "./components/DicePanel";
 import RoomBadge from "./components/RoomBadge";
 import CharacterSheetPanel from "./components/CharacterSheetPanel";
+import ScenarioPanel from "./components/ScenarioPanel";
 import { useBoardStore } from "./store";
 import "./App.css";
 
@@ -23,6 +24,7 @@ export default function App() {
       <RoomBadge />
       <DicePanel />
       {role === "gm" && <PropPalette />}
+      {role === "gm" && <ScenarioPanel />}
       <CharacterSheetPanel />
       {connectionStatus !== "connected" && (
         <div
